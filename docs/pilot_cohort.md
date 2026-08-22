@@ -1,14 +1,11 @@
 # Pilot cohort: micro-niche selection and cohort contract
 
-Status: **DRAFT — PENDING PROJECT-OWNER APPROVAL.**
+Status: **APPROVED** by the project owner (issue #7, 2026-08-22).
 
-Per the issue's human-decision rule, the final niche must be explicitly approved
-by the project owner before this issue is closed. The interactive approval tool
-(`dk_ask_human`) was **not available** during implementation, so this document
-records the candidate comparison and the full proposed contract, but the niche
-is **not finalized** here. `config/pilot_cohort.json` is marked
-`approval_status: "pending_owner_approval"` and downstream agents must treat it
-as provisional until the owner approves exactly one candidate.
+The final niche was explicitly approved by the project owner on GitHub issue
+#7: **Candidate A — single-exercise form tutorials**. `config/pilot_cohort.json`
+is marked `approval_status: "approved"` with `approved_by: "matpeltier"` and is
+the machine-readable source of truth; downstream agents may rely on it.
 
 ---
 
@@ -62,27 +59,27 @@ short-form content on TikTok**.
 | Legal friction | **High**: redistribution of league footage; takedowns would corrupt a longitudinal dataset. |
 | Scale feasibility | Volume fine, corpus stability poor. |
 
-### Recommendation
+### Selected niche
 
-**Candidate A (`single_exercise_form_tutorial`)** is the recommended niche:
-most homogeneous format, largest public availability, lowest legal friction,
-enough commercial content to study affiliate variants later, and its creative
-structure maps cleanly onto CreativeIR decompilation. Candidates B and C remain
-documented as future-cohort options.
-
-> ⚠️ This recommendation requires explicit owner approval. If approved, flip
-> `approval_status` in `config/pilot_cohort.json`, set `approved_by` /
-> `approved_at`, and record it in git history referencing this issue.
+**Candidate A (`single_exercise_form_tutorial`)** was selected and approved by
+the project owner (issue #7): most homogeneous format, largest public
+availability, lowest legal friction, enough commercial content to study
+affiliate variants later, and its creative structure maps cleanly onto
+CreativeIR decompilation. Candidates B and C remain documented as
+future-cohort options only.
 
 ---
 
-## 2. Cohort contract (proposed, pending approval)
+## 2. Cohort contract (approved)
 
 ### Identity
 
 | Field | Value |
 |---|---|
 | `cohort_id` | `pilot-v1-single-exercise-form-tutorial` |
+| `selected_candidate` | `A` |
+| Version | 1.0.0 |
+| Approved by | matpeltier (2026-08-22, issue #7) |
 | Name | Single-exercise form tutorials |
 | Platform | TikTok only |
 

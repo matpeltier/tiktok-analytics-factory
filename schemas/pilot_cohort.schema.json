@@ -30,6 +30,7 @@
     "approval_status": {"enum": ["pending_owner_approval", "approved", "retired"]},
     "approved_by": {"type": ["string", "null"]},
     "approved_at": {"type": ["string", "null"]},
+    "selected_candidate": {"type": "string", "minLength": 1},
     "niche_name": {"type": "string", "minLength": 1},
     "niche_description": {"type": "string", "minLength": 1},
     "platform": {"const": "tiktok"},
