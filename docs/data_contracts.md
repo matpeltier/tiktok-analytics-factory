@@ -43,6 +43,24 @@ backing every factual value is preserved at
 - Regression tests ban the previously fabricated identifiers
   `@bakerylab` / `7300000000000000001` from all reference examples and docs.
 
+### Grounding provenance
+
+The reference examples were regenerated on the delivery VPS from a live
+ingestion run of `https://www.tiktok.com/@scout2015/video/6718335390845095173`
+into `data/raw/` (not copied from a prior artifact):
+
+- Collector: `yt-dlp 2026.8.19`; `pyktok` was attempted first and failed
+  (`collector_dependency_unavailable`); the fallback is traced in
+  `data/raw/6718335390845095173/manifest.json` (`attempted_collectors_in_order`,
+  per-collector `attempts[]`).
+- The creative example's `source.artifact_sha256` is the real media SHA-256
+  from that manifest; regression tests
+  (`test_examples_match_live_ingestion_artifacts`,
+  `test_committed_audit_copy_matches_live_payload`) verify examples against
+  the live artifacts whenever they are present and skip otherwise.
+- Every value unavailable from the payload remains `null`/`unknown`/
+  `"uncertain"` (e.g. `shares`, follower count, all media-frame observations).
+
 ## Global conventions
 
 - **Versioning.** Every object carries `schema: {name, version}` with a

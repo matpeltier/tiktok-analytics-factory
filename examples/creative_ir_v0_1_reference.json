@@ -9,8 +9,8 @@
     "hashtags": ["foryoupage", "petsoftiktok", "aesthetic"],
     "duration_seconds": 10.0,
     "published_at": "2019-07-27T13:32:38+00:00",
-    "artifact_sha256": null,
-    "manifest_reference": null
+    "artifact_sha256": "5fa05e7138b9e28ae66b4647e6828287692b91e23d4b3c2afc2ab334d31e5261",
+    "manifest_reference": "data/raw/6718335390845095173/manifest.json"
   },
   "decompilation": {
     "schema_version": "0.1",
@@ -18,7 +18,7 @@
     "model_id": "none",
     "provider": "none",
     "prompt_version": "none",
-    "created_at": "2026-08-22T19:45:00+00:00",
+    "created_at": "2026-08-22T20:02:40+00:00",
     "annotation_mode": "manual"
   },
   "observed": {

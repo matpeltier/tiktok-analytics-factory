@@ -398,3 +398,43 @@ def test_single_public_projection_entrypoint_produces_valid_canonical(creative_r
     assert entrypoints == ["project_creative_to_canonical"]
     out = contracts_mod.project_creative_to_canonical(creative_ref)
     validate(out, "canonical_ir_v0_1")
+
+
+# --- regression: examples must match the live ingestion in data/raw ----------
+
+
+def _raw_dir() -> Path | None:
+    d = REPO_ROOT / "data" / "raw" / REAL_VIDEO_ID
+    return d if (d / "metadata.normalized.json").exists() else None
+
+
+@pytest.mark.skipif(_raw_dir() is None, reason="data/raw ingestion artifacts not present")
+def test_examples_match_live_ingestion_artifacts():
+    root = _raw_dir()
+    normalized = json.loads((root / "metadata.normalized.json").read_text())
+    manifest = json.loads((root / "manifest.json").read_text())
+    creative = json.loads((EXAMPLES / "creative_ir_v0_1_reference.json").read_text())
+    performance = json.loads((EXAMPLES / "performance_v0_1_reference.json").read_text())
+
+    assert normalized["video_id"] == REAL_VIDEO_ID
+    assert normalized["creator_handle"] == "scout2015"
+    assert performance["published_at"] == normalized["published_at"]
+    for key in ("views", "likes", "comments", "saves"):
+        assert performance["metrics"][key] == normalized[key]
+    assert performance["collector"]["version"] == manifest["collector_version"]
+    assert (
+        creative["source"]["artifact_sha256"] == manifest["sha256"]
+    ), "creative example must reference the real media hash from the live manifest"
+
+
+@pytest.mark.skipif(_raw_dir() is None, reason="data/raw ingestion artifacts not present")
+def test_committed_audit_copy_matches_live_payload():
+    live = json.loads(
+        (REPO_ROOT / "data" / "raw" / REAL_VIDEO_ID / "metadata.raw.json").read_text()
+    )
+    committed = json.loads(
+        (EXAMPLES / "artifacts" / f"metadata_{REAL_VIDEO_ID}.raw.json").read_text()
+    )
+    for key in ("id", "description", "duration", "timestamp", "uploader_id",
+                "view_count", "like_count", "comment_count", "save_count"):
+        assert committed[key] == live[key], f"stale audit copy field: {key}"
