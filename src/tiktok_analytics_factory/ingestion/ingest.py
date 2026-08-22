@@ -30,13 +30,33 @@ def _looks_like_mp4(data: bytes) -> bool:
     return len(data) >= 12 and data[4:8] == b"ftyp"
 
 
+def _build_observation_manifest(
+    canonical_manifest: dict, metadata: NormalizedMetadata, stamp: str
+) -> dict:
+    """Observation provenance record derived from the immutable canonical manifest."""
+    return {
+        **canonical_manifest,
+        "observation_of_manifest": f"{canonical_manifest['video_id']}/manifest.json",
+        "observation_timestamp": stamp,
+        "observed_metadata": metadata.to_json_dict(),
+    }
+
+
 def _write_observation_snapshot(
-    artifact_dir: Path, raw_payload: dict, metadata: NormalizedMetadata
+    artifact_dir: Path,
+    raw_payload: dict,
+    metadata: NormalizedMetadata,
+    canonical_manifest: dict | None = None,
 ) -> str:
     """Write a timestamp-versioned observation without touching canonical files."""
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     _write_json(artifact_dir / f"metadata.raw.{stamp}.json", raw_payload)
     _write_json(artifact_dir / f"metadata.normalized.{stamp}.json", metadata.to_json_dict())
+    if canonical_manifest is not None:
+        _write_json(
+            artifact_dir / f"manifest.{stamp}.json",
+            _build_observation_manifest(canonical_manifest, metadata, stamp),
+        )
     return stamp
 
 
@@ -141,8 +161,9 @@ def ingest(
         if manifest_path.exists() and raw_meta_path.exists() and norm_meta_path.exists():
             observation = None
             if force_new_observation:
+                canonical = json.loads(manifest_path.read_text(encoding="utf-8"))
                 observation = _write_observation_snapshot(
-                    artifact_dir, result.raw_payload, metadata
+                    artifact_dir, result.raw_payload, metadata, canonical_manifest=canonical
                 )
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             return IngestionResult(
