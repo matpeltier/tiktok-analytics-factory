@@ -1,0 +1,77 @@
+{
+  "cohort_id": "pilot-v1-single-exercise-form-tutorial",
+  "version": "0.1.0-draft",
+  "approval_status": "pending_owner_approval",
+  "approved_by": null,
+  "approved_at": null,
+  "niche_name": "Single-exercise form tutorials",
+  "niche_description": "TikTok short videos in which a single creator demonstrates and explains exactly one resistance or bodyweight exercise (setup, execution cues, common mistakes). Not workout routines, programs, motivation, memes, or product hard-sell content.",
+  "platform": "tiktok",
+  "languages": ["en"],
+  "language_policy": "English spoken, captioned, or text-overlaid; any accent/dialect; non-English audio with English subtitles accepted.",
+  "geographic_constraints": "None beyond language; any country of origin.",
+  "duration_seconds": {
+    "min": 10,
+    "max": 90
+  },
+  "publication_window_policy": "Published within the 12 months preceding pilot collection start; exact window dates recorded when sampling begins. Videos younger than 14 days flagged immature_observation.",
+  "commercial_content_policy": {
+    "mode": "allowed_flagged",
+    "flag_values": ["none", "bio_link_only", "in_video_soft"],
+    "rules": "Affiliate/bio-link commerciality permitted and must be flagged per source. In-video soft promotion of own program/app allowed if flagged. Hard product sell (discount codes, supplement close-ups) excluded."
+  },
+  "creator_inclusion_rules": [
+    "Creator account's primary content theme is fitness/strength training (verified by spot-check of recent grid)",
+    "Not a comedy, aggregation, or compilation page"
+  ],
+  "format_inclusion_rules": [
+    "Single creator, vertical video",
+    "Demonstrates exactly one exercise as primary content",
+    "Filmed primarily in a gym/home-gym or equivalent training context"
+  ],
+  "exclusion_rules": [
+    "Multi-exercise routines, full workouts, program pitches, pure talking-head/motivation content",
+    "In-video hard product sell (discount codes read aloud, branded product close-ups as primary subject)",
+    "Dance trends, memes, music/performance content using an exercise as backdrop",
+    "Sexualized framing where exercise demonstration is secondary",
+    "Medical/rehab claims (injury treatment, pain-fix promises)",
+    "Compilation/reaction videos of other creators' clips",
+    "Duration outside 10-90 seconds",
+    "Re-uploads of another creator's video (recorded with duplicate_of note)"
+  ],
+  "duplicate_policy": {
+    "same_video_id": "one_source_record",
+    "direct_reposts": "excluded_with_duplicate_of_note",
+    "near_duplicate_detection": "manual_during_pilot",
+    "near_duplicate_rule": "Same exercise plus substantially identical script/shot list counts as a creative duplicate; keep the earliest-published instance only."
+  },
+  "minimum_metadata_for_inclusion": [
+    "video_id",
+    "source_url",
+    "creator_handle",
+    "duration_seconds",
+    "at_least_one_engagement_metric_at_collection"
+  ],
+  "performance_observation_policy": {
+    "store_published_at_when_available": true,
+    "store_observed_at_for_every_snapshot": true,
+    "store_creator_identity_when_available": true,
+    "store_follower_count_when_available": true,
+    "store_raw_metrics_unnormalized": true,
+    "raw_metrics": ["views", "likes", "comments", "shares", "saves"]
+  },
+  "pilot_sampling_policy": {
+    "target_size_range": [20, 50],
+    "method": "manual_public_browsing_of_niche_hashtags_with_logged_rejections",
+    "performance_strata": ["low", "medium", "high"],
+    "stratification": "roughly equal thirds by observed views at collection time relative to pool typical range",
+    "max_videos_per_creator": 3,
+    "viral_only_sampling_allowed": false
+  },
+  "version_change_triggers": [
+    "Material change to inclusion/exclusion rules",
+    "Change to duplicate policy",
+    "Platform change or second platform addition",
+    "Niche redefinition (requires a new cohort_id entirely)"
+  ]
+}
