@@ -225,3 +225,27 @@ def test_looks_like_mp4_signature():
     assert not _looks_like_mp4(b"short")
 
 
+
+
+def test_force_new_observation_writes_versioned_manifest_snapshot(tmp_path):
+    first = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    canonical_before = (first.artifact_dir / "manifest.json").read_bytes()
+    second = _ingest_with(
+        tmp_path,
+        [StubCollector],
+        "https://www.tiktok.com/@x/video/7300000000000000001",
+        force_new_observation=True,
+    )
+    snapshots = list(second.artifact_dir.glob("manifest.*.json"))
+    assert len(snapshots) == 1
+    obs = json.loads(snapshots[0].read_text())
+    assert obs["video_id"] == first.video_id
+    assert obs["observation_of_manifest"] == f"{first.video_id}/manifest.json"
+    assert obs["observed_metadata"]["video_id"] == first.video_id
+    # canonical manifest untouched
+    assert (second.artifact_dir / "manifest.json").read_bytes() == canonical_before
+
+
+def test_fresh_run_reports_reused_false(tmp_path):
+    res = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    assert res.manifest["mp4_reused_from_previous_run"] is False

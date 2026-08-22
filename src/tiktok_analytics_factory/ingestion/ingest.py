@@ -129,6 +129,8 @@ def ingest(
     norm_meta_path = artifact_dir / "metadata.normalized.json"
     manifest_path = artifact_dir / "manifest.json"
 
+    mp4_was_reused = mp4_path.exists()
+
     new_hash = sha256_of(result.mp4_bytes)
 
     collected_at = result.collected_at
@@ -187,7 +189,14 @@ def ingest(
     if raw_meta_path.exists() and not force_new_observation:
         pass  # keep original raw snapshot immutable
     elif force_new_observation and raw_meta_path.exists():
-        _write_observation_snapshot(artifact_dir, result.raw_payload, metadata)
+        canonical = (
+            json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest_path.exists()
+            else None
+        )
+        _write_observation_snapshot(
+            artifact_dir, result.raw_payload, metadata, canonical_manifest=canonical
+        )
     else:
         _write_json(raw_meta_path, result.raw_payload)
 
@@ -216,7 +225,7 @@ def ingest(
         "artifacts": manifest_artifacts,
         "sha256": file_hash,
         "byte_size": size,
-        "mp4_reused_from_previous_run": mp4_path.exists(),
+        "mp4_reused_from_previous_run": False,
         "collected_at": collected_at,
         "collector_name": result.collector_name,
         "collector_version": _collector_version(result),
