@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover
     PACKAGE_VERSION = "0.0.0"
 
 from .collectors import Attempt, CollectionResult, collect_with_fallback
-from .errors import ArtifactMismatchError, FileWriteError, InvalidURLError
+from .errors import ArtifactMismatchError, DownloadError_, FileWriteError, InvalidURLError
 from .mapping import normalize_payload
 from .models import NormalizedMetadata
 from .urls import extract_video_id, canonical_url, validate_tiktok_url
@@ -23,6 +23,21 @@ from .urls import extract_video_id, canonical_url, validate_tiktok_url
 
 def sha256_of(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _looks_like_mp4(data: bytes) -> bool:
+    """Check ISO-BMFF signature: bytes 4..8 must be ``ftyp``."""
+    return len(data) >= 12 and data[4:8] == b"ftyp"
+
+
+def _write_observation_snapshot(
+    artifact_dir: Path, raw_payload: dict, metadata: NormalizedMetadata
+) -> str:
+    """Write a timestamp-versioned observation without touching canonical files."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    _write_json(artifact_dir / f"metadata.raw.{stamp}.json", raw_payload)
+    _write_json(artifact_dir / f"metadata.normalized.{stamp}.json", metadata.to_json_dict())
+    return stamp
 
 
 def _utcnow() -> str:
@@ -47,6 +62,7 @@ class IngestionResult:
         manifest: dict,
         reused_existing_mp4: bool,
         attempts: list[Attempt],
+        observation_snapshot: str | None = None,
     ) -> None:
         self.video_id = video_id
         self.artifact_dir = artifact_dir
@@ -54,6 +70,7 @@ class IngestionResult:
         self.manifest = manifest
         self.reused_existing_mp4 = reused_existing_mp4
         self.attempts = attempts
+        self.observation_snapshot = observation_snapshot
 
 
 def ingest(
@@ -79,39 +96,20 @@ def ingest(
     result, attempts = collect_with_fallback(url)
     video_id = result.video_id
 
+    if not _looks_like_mp4(result.mp4_bytes or b""):
+        raise DownloadError_(
+            "Downloaded media is not an MP4 (ISO-BMFF) container; "
+            "refusing to store it as video.mp4.",
+            detail={"video_id": video_id, "collector": result.collector_name},
+        )
+
     artifact_dir = Path(output_root) / video_id
     mp4_path = artifact_dir / "video.mp4"
     raw_meta_path = artifact_dir / "metadata.raw.json"
     norm_meta_path = artifact_dir / "metadata.normalized.json"
     manifest_path = artifact_dir / "manifest.json"
 
-    new_hash = sha256_of(result.mp4_bytes) if result.mp4_bytes else None
-    reused = False
-
-    if mp4_path.exists():
-        existing_hash = sha256_of(mp4_path.read_bytes())
-        if new_hash is not None and existing_hash != new_hash:
-            raise ArtifactMismatchError(
-                f"Downloaded MP4 for video {video_id} differs from the stored artifact; "
-                "refusing to overwrite.",
-                detail={
-                    "video_id": video_id,
-                    "existing_sha256": existing_hash,
-                    "downloaded_sha256": new_hash,
-                    "path": str(mp4_path),
-                },
-            )
-        reused = True
-        file_hash, size = existing_hash, mp4_path.stat().st_size
-    elif new_hash is not None:
-        try:
-            artifact_dir.mkdir(parents=True, exist_ok=True)
-            mp4_path.write_bytes(result.mp4_bytes)
-        except OSError as exc:
-            raise FileWriteError(f"Could not write {mp4_path}: {exc}") from exc
-        file_hash, size = new_hash, len(result.mp4_bytes)
-    else:
-        file_hash, size = None, 0
+    new_hash = sha256_of(result.mp4_bytes)
 
     collected_at = result.collected_at
     metadata = normalize_payload(
@@ -124,28 +122,66 @@ def ingest(
         creator_handle_hint=result.creator_handle_hint,
     )
 
+    if mp4_path.exists():
+        existing_hash = sha256_of(mp4_path.read_bytes())
+        if existing_hash != new_hash:
+            raise ArtifactMismatchError(
+                f"Downloaded MP4 for video {video_id} differs from the stored artifact; "
+                "refusing to overwrite.",
+                detail={
+                    "video_id": video_id,
+                    "existing_sha256": existing_hash,
+                    "downloaded_sha256": new_hash,
+                    "path": str(mp4_path),
+                },
+            )
+        # Hash matches: the canonical artifacts are immutable. On an ordinary
+        # rerun nothing is rewritten. A new timestamped observation is recorded
+        # only when explicitly requested.
+        if manifest_path.exists() and raw_meta_path.exists() and norm_meta_path.exists():
+            observation = None
+            if force_new_observation:
+                observation = _write_observation_snapshot(
+                    artifact_dir, result.raw_payload, metadata
+                )
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            return IngestionResult(
+                video_id=video_id,
+                artifact_dir=artifact_dir,
+                metadata=metadata,
+                manifest=manifest,
+                reused_existing_mp4=True,
+                attempts=attempts,
+                observation_snapshot=observation,
+            )
+        file_hash, size = existing_hash, mp4_path.stat().st_size
+    else:
+        try:
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            mp4_path.write_bytes(result.mp4_bytes)
+        except OSError as exc:
+            raise FileWriteError(f"Could not write {mp4_path}: {exc}") from exc
+        file_hash, size = new_hash, len(result.mp4_bytes)
+
     if raw_meta_path.exists() and not force_new_observation:
         pass  # keep original raw snapshot immutable
     elif force_new_observation and raw_meta_path.exists():
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        versioned = artifact_dir / f"metadata.raw.{stamp}.json"
-        _write_json(versioned, result.raw_payload)
-        _write_json(artifact_dir / f"metadata.normalized.{stamp}.json", metadata.to_json_dict())
+        _write_observation_snapshot(artifact_dir, result.raw_payload, metadata)
     else:
         _write_json(raw_meta_path, result.raw_payload)
 
     if not norm_meta_path.exists():
         _write_json(norm_meta_path, metadata.to_json_dict())
 
-    rel = lambda name: (artifact_dir / name).as_posix()  # noqa: E731
+    # Manifest paths are always local-relative and portable, even when
+    # output_root itself is absolute.
+    rel = lambda name: f"{video_id}/{name}"  # noqa: E731
     manifest_artifacts = {
         "video": rel("video.mp4"),
         "metadata_raw": rel("metadata.raw.json"),
         "metadata_normalized": rel("metadata.normalized.json"),
         "manifest": rel("manifest.json"),
     }
-    if not manifest_path.exists():
-        _write_json(manifest_path, {})
 
     fallback_notes = [
         {"collector": a.collector, "error_category": a.error_category, "message": a.error_message}
@@ -159,7 +195,7 @@ def ingest(
         "artifacts": manifest_artifacts,
         "sha256": file_hash,
         "byte_size": size,
-        "mp4_reused_from_previous_run": reused,
+        "mp4_reused_from_previous_run": mp4_path.exists(),
         "collected_at": collected_at,
         "collector_name": result.collector_name,
         "collector_version": _collector_version(result),
@@ -175,7 +211,7 @@ def ingest(
         artifact_dir=artifact_dir,
         metadata=metadata,
         manifest=manifest,
-        reused_existing_mp4=reused,
+        reused_existing_mp4=False,
         attempts=attempts,
     )
 

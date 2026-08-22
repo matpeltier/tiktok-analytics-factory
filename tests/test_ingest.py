@@ -108,3 +108,120 @@ def test_invalid_url_fails_fast(tmp_path):
 
     with pytest.raises(InvalidURLError):
         _ingest_with(tmp_path, [StubCollector], "not-a-tiktok-url")
+
+
+# ---- PM blocker regression tests ----
+
+from tiktok_analytics_factory.ingestion.collectors import CollectionResult
+from tiktok_analytics_factory.ingestion.errors import DownloadError_
+
+
+def _canonical_files(d):
+    return ["video.mp4", "metadata.raw.json", "metadata.normalized.json", "manifest.json"]
+
+
+class NoMediaCollector(FakeCollector):
+    """Simulates Pyktok returning metadata without any media bytes."""
+
+    name = "nomedia"
+
+    def collect(self, url):
+        result = super().collect(url)
+        result.mp4_bytes = None
+        return result
+
+
+def test_missing_media_is_failure_and_triggers_fallback(tmp_path):
+    res = _ingest_with(
+        tmp_path,
+        [NoMediaCollector, StubCollector],
+        "https://www.tiktok.com/@x/video/7300000000000000001",
+    )
+    manifest = json.loads((res.artifact_dir / "manifest.json").read_text())
+    assert manifest["collector_name"] == "fake"
+    assert manifest["attempted_collectors_in_order"] == ["nomedia", "fake"]
+    notes = manifest["fallback_or_error_notes"]
+    assert notes and notes[0]["collector"] == "nomedia"
+    assert notes[0]["error_category"] == "download_failure"
+
+
+def test_all_collectors_without_media_fail_no_manifest(tmp_path):
+    class NoMedia2(NoMediaCollector):
+        name = "nomedia2"
+
+    with pytest.raises(DownloadError_):
+        _ingest_with(tmp_path, [NoMediaCollector, NoMedia2], "https://www.tiktok.com/@x/video/7300000000000000001")
+    assert not (tmp_path / "raw" / "7300000000000000001").exists()
+
+
+def test_ordinary_rerun_touches_no_canonical_file(tmp_path):
+    first = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    before = {
+        name: (
+            (first.artifact_dir / name).stat().st_mtime_ns,
+            (first.artifact_dir / name).read_bytes(),
+        )
+        for name in _canonical_files(first.artifact_dir)
+    }
+    second = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    for name, (mtime, content) in before.items():
+        st = (second.artifact_dir / name).stat()
+        assert st.st_mtime_ns == mtime, f"{name} was modified"
+        assert (second.artifact_dir / name).read_bytes() == content
+    # no versioned snapshots without explicit request
+    assert not list(second.artifact_dir.glob("metadata.*.*.json"))
+
+
+def test_force_new_observation_preserves_canonical_provenance(tmp_path):
+    first = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    before = {name: (first.artifact_dir / name).stat().st_mtime_ns for name in _canonical_files(first.artifact_dir)}
+    second = _ingest_with(
+        tmp_path,
+        [StubCollector],
+        "https://www.tiktok.com/@x/video/7300000000000000001",
+        force_new_observation=True,
+    )
+    assert second.observation_snapshot is not None
+    for name, mtime in before.items():
+        assert (second.artifact_dir / name).stat().st_mtime_ns == mtime, f"{name} was modified"
+    assert list(second.artifact_dir.glob("metadata.raw.*.json"))
+    assert list(second.artifact_dir.glob("metadata.normalized.*.json"))
+
+
+def test_manifest_paths_relative_with_absolute_output_root(tmp_path, monkeypatch):
+    from tiktok_analytics_factory.ingestion import collectors as collectors_mod
+
+    monkeypatch.setattr(collectors_mod, "DEFAULT_COLLECTOR_ORDER", [StubCollector])
+    abs_root = tmp_path / "absolute" / "raw"
+    res = ing.ingest(
+        "https://www.tiktok.com/@x/video/7300000000000000001",
+        str(abs_root),
+    )
+    artifacts = json.loads((res.artifact_dir / "manifest.json").read_text())["artifacts"]
+    for value in artifacts.values():
+        assert not value.startswith("/")
+        assert "\\" not in value
+        assert value.startswith("7300000000000000001/")
+
+
+def test_non_mp4_bytes_refused_cleanly(tmp_path):
+    class NotMp4(StubCollector):
+        def collect(self, url):
+            r = super().collect(url)
+            r.mp4_bytes = b"not-an-mp4-container-at-all"
+            return r
+
+    with pytest.raises(DownloadError_):
+        _ingest_with(tmp_path, [NotMp4], "https://www.tiktok.com/@x/video/7300000000000000001")
+    assert not (tmp_path / "raw" / "7300000000000000001").exists()
+
+
+def test_looks_like_mp4_signature():
+    from tiktok_analytics_factory.ingestion.ingest import _looks_like_mp4
+
+    assert _looks_like_mp4(FAKE_MP4_A)
+    assert not _looks_like_mp4(b"\x00\x00\x00\x18XTypmp42" + b"x" * 20)
+    assert not _looks_like_mp4(b"RIFFxxxxWEBPVP8 " + b"x" * 20)
+    assert not _looks_like_mp4(b"short")
+
+

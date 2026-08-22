@@ -109,8 +109,11 @@ class PyktokCollector:
                 if os.path.exists(target) and os.path.getsize(target) > 0:
                     with open(target, "rb") as fh:
                         result.mp4_bytes = fh.read()
-                elif not payload.get("video_url"):
-                    raise DownloadError_("pyktok produced no MP4 file.")
+                else:
+                    raise DownloadError_(
+                        "pyktok produced no MP4 file.",
+                        detail={"url": url},
+                    )
         except IngestionError:
             raise
         except Exception as exc:
@@ -182,7 +185,12 @@ class YtDlpCollector:
                     "noplaylist": True,
                     "noprogress": True,
                     "outtmpl": os.path.join(tmp, "video.%(ext)s"),
+                    # Guarantee a real MP4 container: prefer native mp4, otherwise
+                    # remux/merge into mp4 (requires ffmpeg; fails cleanly if
+                    # remuxing is impossible).
                     "format": "best[ext=mp4]/best",
+                    "merge_output_format": "mp4",
+                    "remux_video_format": "mp4",
                 }
                 with yt_dlp.YoutubeDL(opts) as ydl:
                     ydl.extract_info(url, download=True)
@@ -190,6 +198,12 @@ class YtDlpCollector:
                 if not files:
                     raise DownloadError_("yt-dlp downloaded no media file.")
                 path = os.path.join(tmp, files[0])
+                if not files[0].endswith(".mp4"):
+                    raise DownloadError_(
+                        f"yt-dlp produced a non-MP4 container ({files[0]}); "
+                        "refusing to store it as video.mp4.",
+                        detail={"file": files[0], "url": url},
+                    )
                 if os.path.getsize(path) > 0:
                     with open(path, "rb") as fh:
                         result.mp4_bytes = fh.read()
@@ -208,7 +222,12 @@ DEFAULT_COLLECTOR_ORDER: list[Any] = [PyktokCollector, YtDlpCollector]
 
 
 def collect_with_fallback(url: str, order: list[Any] | None = None) -> tuple[CollectionResult, list[Attempt]]:
-    """Try collectors in explicit order; record every failure."""
+    """Try collectors in explicit order; record every failure.
+
+    A collector counts as successful only when it returns a non-empty media
+    artifact. A result without media bytes is recorded as a download failure
+    and the next collector is attempted.
+    """
     attempts: list[Attempt] = []
     classes = order if order is not None else DEFAULT_COLLECTOR_ORDER
     last_error: IngestionError | None = None
@@ -221,6 +240,14 @@ def collect_with_fallback(url: str, order: list[Any] | None = None) -> tuple[Col
             last_error = exc
             continue
         except IngestionError as exc:
+            attempts.append(Attempt(collector.name, False, exc.category, exc.message))
+            last_error = exc
+            continue
+        if not result.mp4_bytes:
+            exc = DownloadError_(
+                f"Collector '{collector.name}' returned no media bytes.",
+                detail={"collector": collector.name, "url": url},
+            )
             attempts.append(Attempt(collector.name, False, exc.category, exc.message))
             last_error = exc
             continue
