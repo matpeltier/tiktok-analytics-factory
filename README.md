@@ -72,3 +72,7 @@ notebooks/  exploratory analysis (future)
 tests/      pytest suite
 data/       local artifact layout documentation; raw media is git-ignored
 ```
+
+## Single-video ingestion
+
+See `docs/ingestion.md` and `notebooks/01_single_video_ingestion.ipynb`.
