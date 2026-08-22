@@ -93,26 +93,28 @@ recall / F1 and median absolute timing error for matched pairs
 (`evaluation.evaluate_boundaries`). This evaluates deterministic cut detection
 only — it makes no claim about semantic scene changes that are not hard cuts.
 
-### Reference-video status
+### Reference-video evaluation (canonical TikTok 6718335390845095173)
 
-The canonical reference video from issue #2 was not present under
-`data/raw/<video_id>/video.mp4` at implementation time (raw media lives locally
-and is not committed). The reference-video evaluation therefore could not be
-run yet. To run it once the video exists:
+The canonical 10.495 s reference video from issue #2 was recovered (re-ingested
+after the local CDN snapshot URLs expired) and stored at
+`data/raw/6718335390845095173/video.mp4`. Its perception artifacts live in
+`data/derived/6718335390845095173/perception/v1/`:
+`media_facts.json`, `shots.json`, `perception_manifest.json`,
+`hard_cut_annotation.json`, `boundary_evaluation.json`, and
+`frames/shot_001.jpg … shot_010.jpg`.
 
-1. `python -m tiktok_analytics_factory.cli ingest ...` (#2) to produce
-   `data/raw/<video_id>/video.mp4`;
-2. open `notebooks/03_perception_review.ipynb`, set `REFERENCE_VIDEO`,
-   hand-annotate hard cuts into `MANUAL_CUTS`, and run the evaluation cells —
-   the notebook computes precision/recall/F1 and median timing error against
-   the detected boundaries and renders boundary/frames for review.
+Hard-cut annotation method: manual review of before/after frames at every
+candidate boundary plus a 4 fps contact sheet covering the full video; a
+boundary counts as a hard visual cut only when both sides are clearly
+different scenes. Nine hard cuts were annotated (0.50, 1.13, 3.40, 4.20,
+4.93, 5.70, 6.60, 7.57, 8.37 s); several coincide with whip-pan blur
+transitions but present as abrupt cuts.
 
-Until then, quality is measured on a tiny local synthetic fixture with known
-cuts: four concatenated solid-color segments of 1.2 s each (cuts at 1.2, 2.4,
-3.6 s), probed/detected with the same code path. Result with default
-parameters: TP=3, FP=0, missed=0, precision=recall=F1=1.0, median absolute
-timing error = 0.000 s (±0.30 s tolerance). The synthetic fixture is used for
-tests and calibration only; it does not replace the canonical reference video.
+Result with default parameters (`threshold=27.0`, ±0.30 s tolerance):
+TP=9, FP=0, missed=0, precision = recall = F1 = 1.0, median absolute timing
+error = 0.000 s. A tiny synthetic fixture with known cuts remains in the test
+suite as an additional deterministic check only; it does not replace the
+canonical reference video.
 
 ## Known limitations
 
