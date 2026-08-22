@@ -1,0 +1,117 @@
+{
+  "template_version": "0.1",
+  "purpose": "Completed manual evaluation of single-pass baseline run baseline-001 on reference video 6718335390845095173.",
+  "run_metadata": {
+    "video_id": "6718335390845095173",
+    "source_url": "https://www.tiktok.com/@scout2015/video/6718335390845095173",
+    "run_id": "baseline-001",
+    "model_id": "gemini-3.6-flash",
+    "prompt_version": "single_pass_creative_ir_v0_1",
+    "evaluator": "manual frame-by-frame review (ffmpeg 1fps extraction + ffprobe facts)",
+    "evaluated_at": "2026-08-22T21:10:00+00:00"
+  },
+  "categories": {
+    "media_facts": {
+      "score": 4,
+      "notes": "Duration claim close; resolution/fps correctly left null rather than guessed.",
+      "evidence": "Claimed duration_seconds_claimed=10.0 vs ffprobe Duration=00:00:10.50 (0.5s / ~5% error). resolution_claimed/fps_claimed=null; actual 720x1280@30fps."
+    },
+    "shot_boundaries_timeline": {
+      "score": 4,
+      "notes": "Ordering and per-shot content match the extracted frames at each second; boundaries quantized to whole seconds.",
+      "evidence": "Frames f_01..f_10 confirm: boat dog(0-1), poolside walk(~2), towel close-up(~3), blur transition(~4), running to camera(~5), hand splash(~6), fish scene(~7), swim(~8-9), boat wake(~9-10). Uniform 1s segmentation suggests coarse boundary estimation."
+    },
+    "visible_text_ocr": {
+      "score": 2,
+      "notes": "Returned visible_text=[] but a legible brand text appears on the yellow towel.",
+      "evidence": "'CHILLY PAD' circular logo plus partial 'cooling...' text clearly legible on the towel in frame f_03 (~2-3s); omitted entirely."
+    },
+    "dialogue": {
+      "score": 5,
+      "notes": "No spoken dialogue present; model correctly returned empty dialogue without invention.",
+      "evidence": "Audio is music only (metadata music_title='original sound'); output dialogue=[]."
+    },
+    "visual_description": {
+      "score": 4,
+      "notes": "Subjects, actions, setting accurate across all sampled frames; one accessory mislabel.",
+      "evidence": "Dog described as wearing 'pink harness' in shot 2; it is a pink collar (also seen shots 1,7). Boat/pool/towel/fish/wake descriptions all match frames."
+    },
+    "camera_editing": {
+      "score": 4,
+      "notes": "Framing/movement per shot plausible and consistent with frames; transitions incl. whip-blur captured.",
+      "evidence": "Low-angle tracking (shot 2), close-up (shot 3), motion-blur move (shot 4), high-angle rear wake view (shot 9) all match; 'hard cut' transitions consistent with distinct scenes per second."
+    },
+    "audio": {
+      "score": 4,
+      "notes": "Conservative presence claims; no invented track/artist. One over-specific descriptor.",
+      "evidence": "music_presence='present', voiceover='none', sfx=[] are safe; 'vocal music track' asserts vocals that cannot be confirmed from review and metadata only says 'original sound'."
+    },
+    "hook": {
+      "score": 4,
+      "notes": "Hook evidence grounded in first shot; mechanism inference reasonable.",
+      "evidence": "First frame: fluffy black-and-white dog standing on boat seat facing camera, mouth open/panting - matches output description; 'cute animal engages pet lovers' is a sound inference."
+    },
+    "narrative": {
+      "score": 4,
+      "notes": "Montage structure and semantic roles correctly inferred; no story arc invented.",
+      "evidence": "Output calls it a 'high-energy summer pet adventure montage'; frames support loose activity montage rather than narrative arc."
+    },
+    "marketing_commercial_reasoning": {
+      "score": 3,
+      "notes": "Returning commercial_mechanisms=[] is defensible visually, but misses the engagement-bait CTA evident from source metadata/caption.",
+      "evidence": "Caption: 'Scramble up ur name & I'll try to guess it' = comment-bait CTA; model saw the caption in source metadata yet inferred no persuasion mechanism."
+    },
+    "reconstruction_quality": {
+      "score": 4,
+      "notes": "Per-shot instructions cover all 9 shots in order; a creator could approximately rebuild the montage.",
+      "evidence": "Each generation.per_shot_instruction maps 1:1 to an observed shot; global instruction captures 10s pet montage + lively music."
+    }
+  },
+  "unsupported_claims": [
+    {
+      "claim": "Music described as 'Upbeat cheerful vocal music track'",
+      "location_in_output": "observed.audio.music_description",
+      "why_unsupported": "Vocals not verifiable from review pass; source metadata only identifies 'original sound'. Over-specified beyond observation."
+    },
+    {
+      "claim": "Dog 'panting happily' / 'sitting happy'",
+      "location_in_output": "observed.timeline[0].subjects_actions; timeline[6]",
+      "why_unsupported": "Emotional-state attribution beyond what is visually observable; open-mouth appearance is observable, happiness is inferred inside observed.* fields."
+    },
+    {
+      "claim": "Shot 2: dog wearing 'pink harness'",
+      "location_in_output": "observed.timeline[1].description",
+      "why_unsupported": "Accessory is a collar, not a harness, in reviewed frames."
+    }
+  ],
+  "missed_important_facts": [
+    {
+      "fact": "'CHILLY PAD' brand logo/text on yellow towel",
+      "where_expected": "observed.visible_text / timeline[2].on_screen_text",
+      "impact": "Loses product-branding signal relevant to creative analysis; exact-text extraction is a core CreativeIR requirement."
+    },
+    {
+      "fact": "Engagement-bait CTA from caption ('Scramble up ur name & I'll try to guess it')",
+      "where_expected": "inferred.commercial_mechanisms or attention mechanisms",
+      "impact": "Misses the video's primary comment-driving persuasion loop."
+    },
+    {
+      "fact": "True duration 10.5s (ffprobe)",
+      "where_expected": "source.duration_seconds_claimed",
+      "impact": "Minor; within 5%, acceptable for a no-preprocessing baseline."
+    }
+  ],
+  "schema_validation_success": true,
+  "latency_seconds": 27.632,
+  "api_usage": {
+    "input_tokens": 4313,
+    "output_tokens": 1904,
+    "total_tokens": 8671
+  },
+  "cost_usd": 0.02075,
+  "top_weaknesses": [
+    "No deterministic media preprocessing: duration misestimated and shot boundaries quantized to uniform 1-second slices.",
+    "Exact on-screen text extraction failed (missed legible 'CHILLY PAD' branding).",
+    "Single pass cannot combine source-metadata signals (caption CTA) with visual evidence into persuasion analysis."
+  ]
+}
