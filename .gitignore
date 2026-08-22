@@ -1,0 +1,3 @@
+# Dark Kitchen runtime and local secrets
+.dark-kitchen/runtime/
+.dark-kitchen/.env

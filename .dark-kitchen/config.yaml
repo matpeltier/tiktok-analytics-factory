@@ -1,0 +1,50 @@
+version: 1
+
+trackers:
+  - id: gh-issues
+    kind: github-issues
+    owner: matpeltier
+    repo: tiktok-analytics-factory
+    tokenEnv: GITHUB_TOKEN
+
+repositories:
+  - id: main-repo
+    kind: github
+    owner: matpeltier
+    repo: tiktok-analytics-factory
+    defaultBranch: main
+    tokenEnv: GITHUB_TOKEN
+
+concurrency:
+  maxParallelTasks: 4
+  maxParallelWorkflows: 2
+
+scheduler:
+  autoPromoteDependents: false
+
+harnessProfiles:
+  - managed: true
+    id: opencode-ox-alpha
+    kind: opencode
+    model: opencode/x-preview-f-free
+
+roles:
+  - id: implementer
+    harnessProfileId: opencode-ox-alpha
+  - id: reviewer
+    harnessProfileId: opencode-ox-alpha
+  - id: fixer
+    harnessProfileId: opencode-ox-alpha
+  - id: repository-tester
+    harnessProfileId: opencode-ox-alpha
+
+workflows:
+  - id: default
+    builtin: default
+    default: true
+    roles: [implementer, reviewer, fixer, repository-tester]
+
+mergePolicy:
+  strategy: squash
+  requireApproval: true
+  deleteHeadBranchAfterMerge: true
