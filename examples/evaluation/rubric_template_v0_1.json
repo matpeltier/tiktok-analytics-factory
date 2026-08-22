@@ -1,0 +1,54 @@
+{
+  "template_version": "0.1",
+  "purpose": "Reusable manual evaluation rubric for single-pass and multi-step decompilation comparison. Score each category 1-5 with concrete evidence notes.",
+  "scoring_scale": {
+    "5": "Excellent: complete and exact",
+    "4": "Good: minor imprecision only",
+    "3": "Adequate: several notable errors or omissions",
+    "2": "Poor: major errors or large omissions",
+    "1": "Failed: mostly wrong, hallucinated, or missing"
+  },
+  "run_metadata": {
+    "video_id": null,
+    "run_id": null,
+    "model_id": null,
+    "prompt_version": null,
+    "evaluator": null,
+    "evaluated_at": null
+  },
+  "categories": {
+    "media_facts": {
+      "score": null,
+      "notes": "",
+      "evidence": ""
+    },
+    "shot_boundaries_timeline": { "score": null, "notes": "", "evidence": "" },
+    "visible_text_ocr": { "score": null, "notes": "", "evidence": "" },
+    "dialogue": { "score": null, "notes": "", "evidence": "" },
+    "visual_description": { "score": null, "notes": "", "evidence": "" },
+    "camera_editing": { "score": null, "notes": "", "evidence": "" },
+    "audio": { "score": null, "notes": "", "evidence": "" },
+    "hook": { "score": null, "notes": "", "evidence": "" },
+    "narrative": { "score": null, "notes": "", "evidence": "" },
+    "marketing_commercial_reasoning": { "score": null, "notes": "", "evidence": "" },
+    "reconstruction_quality": { "score": null, "notes": "", "evidence": "" }
+  },
+  "unsupported_claims": [
+    {
+      "claim": "",
+      "location_in_output": "",
+      "why_unsupported": ""
+    }
+  ],
+  "missed_important_facts": [
+    {
+      "fact": "",
+      "where_expected": "",
+      "impact": ""
+    }
+  ],
+  "schema_validation_success": null,
+  "latency_seconds": null,
+  "api_usage": { "input_tokens": null, "output_tokens": null },
+  "cost_usd": null
+}

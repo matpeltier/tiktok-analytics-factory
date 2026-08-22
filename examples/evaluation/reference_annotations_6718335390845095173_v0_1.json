@@ -1,0 +1,67 @@
+{
+  "fixture_version": "0.1",
+  "purpose": "Hand-reviewed reference annotations for reference TikTok 6718335390845095173. Evaluation aid only; never fed into the baseline model call.",
+  "video_id": "6718335390845095173",
+  "source_sha256": "5fa05e7138b9e28ae66b4647e6828287692b91e23d4b3c2afc2ab334d31e5261",
+  "duration_seconds": {
+    "value": 10.5,
+    "tool": "ffprobe: Duration 00:00:10.50"
+  },
+  "resolution_fps": {
+    "value": "720x1280 @ 30fps",
+    "tool": "ffprobe"
+  },
+  "major_shots": [
+    {
+      "start_s": 0.0,
+      "end_s": 1.0,
+      "note": "Fluffy black/white dog (collar) standing on boat seat, ocean behind, mouth open."
+    },
+    {
+      "start_s": 1.0,
+      "end_s": 2.0,
+      "note": "Dog walking along poolside coping near turquoise pool."
+    },
+    {
+      "start_s": 2.0,
+      "end_s": 3.0,
+      "note": "Close-up dog wrapped in yellow towel on boat seat; 'CHILLY PAD' logo text on towel."
+    },
+    {
+      "start_s": 3.0,
+      "end_s": 4.0,
+      "note": "Fast motion-blur whip transition over pool water."
+    },
+    {
+      "start_s": 4.0,
+      "end_s": 5.0,
+      "note": "Low-angle shot of dog running toward camera, thatched hut behind."
+    },
+    {
+      "start_s": 5.0,
+      "end_s": 6.0,
+      "note": "Close-up human hand splashing pool water."
+    },
+    {
+      "start_s": 6.0,
+      "end_s": 7.0,
+      "note": "Dog sitting on boat seat beside person holding a colorful reef fish."
+    },
+    {
+      "start_s": 7.0,
+      "end_s": 8.5,
+      "note": "Dog paddling/swimming in pool water."
+    },
+    {
+      "start_s": 8.5,
+      "end_s": 10.5,
+      "note": "Rear view from moving boat, wake trailing in ocean."
+    }
+  ],
+  "key_visible_text": [
+    "CHILLY PAD (towel logo, ~2-3s)"
+  ],
+  "key_dialogue": [],
+  "audio_notes": "Background music ('original sound' per metadata); no audible speech identified in review.",
+  "narrative_hook_notes": "Cute-dog opener as hook; loose summer activity montage (boat + pool); non-narrative; caption runs comment-bait CTA ('Scramble up ur name & I'll try to guess it')."
+}

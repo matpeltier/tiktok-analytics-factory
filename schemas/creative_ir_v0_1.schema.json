@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/matpeltier/tiktok-analytics-factory/schemas/creative_ir_v0_1.schema.json",
+  "title": "CreativeIR v0.1",
+  "description": "Model-agnostic creative description of a short video, with observed / inferred / generation separation.",
+  "type": "object",
+  "required": ["schema_version", "source", "observed", "inferred", "generation"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "source": {
+      "type": "object",
+      "required": ["video_id"],
+      "additionalProperties": false,
+      "properties": {
+        "video_id": { "type": ["string", "null"] },
+        "duration_seconds_claimed": {
+          "type": ["number", "null"],
+          "description": "Duration as claimed/estimated by the model. Observed facts must come from deterministic tooling; null if unknown."
+        },
+        "resolution_claimed": { "type": ["string", "null"] },
+        "fps_claimed": { "type": ["number", "null"] }
+      }
+    },
+    "observed": {
+      "type": "object",
+      "required": ["timeline", "visible_text", "dialogue", "visual", "audio"],
+      "additionalProperties": false,
+      "properties": {
+        "timeline": {
+          "type": "array",
+          "description": "Ordered shots/scenes with timestamps in seconds.",
+          "items": {
+            "type": "object",
+            "required": ["index", "start_seconds", "end_seconds", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "index": { "type": "integer" },
+              "start_seconds": { "type": ["number", "null"], "minimum": 0 },
+              "end_seconds": { "type": ["number", "null"], "minimum": 0 },
+              "boundary_confidence": { "type": ["string", "null"], "enum": [null, "high", "medium", "low"] },
+              "description": { "type": "string" },
+              "subjects_actions": { "type": ["string", "null"] },
+              "camera_framing_movement": { "type": ["string", "null"] },
+              "on_screen_text": { "type": ["array", "null"], "items": { "type": "string" } },
+              "spoken_dialogue": { "type": ["string", "null"] },
+              "transition_to_next": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "visible_text": {
+          "type": "array",
+          "description": "Exact legible on-screen text across the whole video.",
+          "items": {
+            "type": "object",
+            "required": ["text", "timestamp_seconds"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "timestamp_seconds": { "type": ["number", "null"] },
+              "legibility_confidence": { "type": ["string", "null"], "enum": [null, "high", "medium", "low"] }
+            }
+          }
+        },
+        "dialogue": {
+          "type": "array",
+          "description": "Spoken lines only when actually audible; empty array if none.",
+          "items": {
+            "type": "object",
+            "required": ["text", "timestamp_seconds"],
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "timestamp_seconds": { "type": ["number", "null"] },
+              "confidence": { "type": ["string", "null"], "enum": [null, "high", "medium", "low"] }
+            }
+          }
+        },
+        "visual": {
+          "type": "object",
+          "required": [],
+          "additionalProperties": false,
+          "properties": {
+            "overall_description": { "type": ["string", "null"] },
+            "setting": { "type": ["string", "null"] },
+            "people_subjects": { "type": ["string", "null"] },
+            "editing_style": { "type": ["string", "null"] }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "description": "Conservative observations only; never invent track titles or artists.",
+          "required": [],
+          "additionalProperties": false,
+          "properties": {
+            "music_presence": { "type": ["string", "null"], "enum": [null, "none", "uncertain", "present"] },
+            "music_description": { "type": ["string", "null"] },
+            "sfx_events": { "type": ["array", "null"], "items": { "type": "string" } },
+            "voiceover_presence": { "type": ["string", "null"], "enum": [null, "none", "uncertain", "present"] }
+          }
+        }
+      }
+    },
+    "inferred": {
+      "type": "object",
+      "required": [],
+      "additionalProperties": false,
+      "properties": {
+        "hook": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "evidence": { "type": ["string", "null"] },
+            "mechanism": { "type": ["string", "null"] }
+          }
+        },
+        "narrative_structure": { "type": ["string", "null"] },
+        "audience_hypothesis": { "type": ["string", "null"] },
+        "attention_mechanisms": { "type": ["array", "null"], "items": { "type": "string" } },
+        "commercial_mechanisms": {
+          "type": ["array", "null"],
+          "description": "Product/problem/proof/CTA style persuasion elements when applicable.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "required": [],
+      "additionalProperties": false,
+      "properties": {
+        "global_instructions": { "type": ["string", "null"] },
+        "per_shot_instructions": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["shot_index", "instruction"],
+            "additionalProperties": false,
+            "properties": {
+              "shot_index": { "type": "integer" },
+              "instruction": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "uncertainties": {
+      "type": ["array", "null"],
+      "description": "Explicit list of things the model could not determine; use instead of guessing.",
+      "items": { "type": "string" }
+    }
+  }
+}

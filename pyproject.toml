@@ -26,6 +26,11 @@ dev = [
     "pytest>=8",
     "jsonschema>=4.21",
 ]
+baseline = [
+    "google-genai>=1.0",
+    "jsonschema>=4.21",
+    "jupyter>=1",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

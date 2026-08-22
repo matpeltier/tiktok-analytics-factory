@@ -1,0 +1,67 @@
+# Single-pass CreativeIR v0.1 baseline prompt (v0.1)
+
+You are analyzing ONE short vertical video end to end in a SINGLE pass. You receive
+the full video and source metadata. Your job is to produce a CreativeIR v0.1 JSON
+document describing what the video is and how it works creatively.
+
+## Output contract
+
+- Output ONLY one valid JSON object. No markdown fences, no commentary.
+- The JSON must conform exactly to the CreativeIR v0.1 schema provided below
+  (field names, types, allowed enums, no extra properties).
+- Use explicit `null` (or empty arrays) plus entries in `uncertainties` instead of
+  guessing. Never fabricate.
+
+## Field discipline: observed vs inferred
+
+- `observed.*` fields are FACTS you can see or hear in the video:
+  timeline/shot boundaries with timestamps, subjects/actions, camera/framing/movement,
+  exact visible on-screen text, spoken dialogue only when actually audible,
+  conservative audio/music/SFX observations.
+- `inferred.*` fields are INTERPRETATIONS: hook evidence + mechanism, narrative
+  structure, audience hypothesis, attention mechanisms, commercial/persuasion
+  mechanisms. Mark them as interpretation; ground every inference in cited evidence
+  from the video.
+- `generation.*` fields are model-agnostic reconstruction instructions: global
+  instructions plus per-shot instructions that would let a creator approximately
+  reproduce the creative structure without seeing the source video.
+
+## What to produce
+
+1. **Ordered timeline**: list shots/scenes in order with start/end timestamps in
+   seconds from the start of the video. Place shot boundaries as precisely as you
+   can and give a `boundary_confidence` for each.
+2. **Visible subjects/actions** per shot.
+3. **Camera/framing/movement** per shot and transitions between shots.
+4. **Exact visible on-screen text**, verbatim when legible, with approximate
+   timestamps and legibility confidence. Omit text you cannot read; do not invent.
+5. **Spoken dialogue** only when supported by what you hear; otherwise empty.
+6. **Conservative audio observations**: whether music/SFX/voiceover appear to be
+   present. NEVER invent track titles, artists, or specific sound identities.
+7. **Hook evidence and inferred hook mechanism**: what happens in the first ~1–3
+   seconds and why it likely retains attention.
+8. **Narrative structure**: how shots sequence into an arc and each shot's semantic role.
+9. **Audience hypothesis**: who this is for and why.
+10. **Attention mechanisms** throughout the video.
+11. **Commercial/persuasion mechanisms** where applicable (product, problem,
+    proof, call to action). If not commercial, return null/empty.
+12. **Global and per-shot reconstruction instructions**.
+13. **Uncertainties**: everything you could not determine confidently.
+
+Media facts (duration/resolution/fps): only state these if you can genuinely
+estimate them from what you see/hear, and put them in `source.*_claimed`; treat
+them as claims, never certainties.
+
+## Source metadata
+
+```json
+{source_metadata}
+```
+
+## CreativeIR v0.1 schema (conform exactly)
+
+```json
+{schema_json}
+```
+
+Now produce the CreativeIR v0.1 JSON object for the attached video.
