@@ -1,0 +1,48 @@
+{
+  "template_version": "0.1",
+  "purpose": "Redacted example of a completed manual evaluation for the single-pass baseline. Illustrative values only.",
+  "run_metadata": {
+    "video_id": "EXAMPLE_VIDEO_ID",
+    "run_id": "20260822T120000Z_abcd1234",
+    "model_id": "gemini-flash-class-model (from project config)",
+    "prompt_version": "single_pass_creative_ir_v0_1",
+    "evaluator": "human-reviewer",
+    "evaluated_at": "2026-08-22T12:30:00+00:00"
+  },
+  "categories": {
+    "media_facts": { "score": 4, "notes": "Duration claim within ~1s.", "evidence": "Claimed 21.3s vs player readout 21.6s." },
+    "shot_boundaries_timeline": { "score": 2, "notes": "Order correct but two boundaries off by >1s and one cut missed entirely.", "evidence": "Reference annotations place a hard cut at ~7.2s; model merged shots 3-4." },
+    "visible_text_ocr": { "score": 3, "notes": "Hook text exact; mid-video price overlay missed.", "evidence": "Overlay '$29' visible at ~7.5s absent from output." },
+    "dialogue": { "score": 4, "notes": "Key line captured verbatim; low-confidence flag used correctly.", "evidence": "" },
+    "visual_description": { "score": 4, "notes": "Subjects and actions accurate.", "evidence": "" },
+    "camera_editing": { "score": 3, "notes": "Handheld framing noted; whip-pan transition described as a plain cut.", "evidence": "" },
+    "audio": { "score": 4, "notes": "Music presence flagged, no invented track identity.", "evidence": "" },
+    "hook": { "score": 4, "notes": "Negation hook identified with cited on-screen text evidence.", "evidence": "" },
+    "narrative": { "score": 3, "notes": "Problem->tip arc correct but final CTA shot role unlabeled.", "evidence": "" },
+    "marketing_commercial_reasoning": { "score": 3, "notes": "Product and CTA found; no proof element mentioned despite review screenshot at ~14s.", "evidence": "" },
+    "reconstruction_quality": { "score": 3, "notes": "A creator could reproduce structure but not pacing due to missing boundary precision.", "evidence": "" }
+  },
+  "unsupported_claims": [
+    {
+      "claim": "\"Studio lighting setup with softbox visible\"",
+      "location_in_output": "observed.visual.overall_description",
+      "why_unsupported": "No softbox appears in any frame; lighting is ambient window light."
+    }
+  ],
+  "missed_important_facts": [
+    {
+      "fact": "Hard cut at ~7.2s",
+      "where_expected": "observed.timeline",
+      "impact": "Shot boundary/timeline scoring degraded; reconstruction pacing wrong."
+    },
+    {
+      "fact": "'$29' price overlay",
+      "where_expected": "observed.visible_text",
+      "impact": "Commercial mechanism reasoning incomplete."
+    }
+  ],
+  "schema_validation_success": true,
+  "latency_seconds": 38.7,
+  "api_usage": { "input_tokens": 31200, "output_tokens": 2450 },
+  "cost_usd": 0.0398
+}

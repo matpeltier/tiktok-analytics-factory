@@ -1,0 +1,26 @@
+{
+  "fixture_version": "0.1",
+  "purpose": "Hand-reviewed reference annotations for the reference TikTok. Evaluation aid only; never fed into the baseline model call. Fill in after watching the video in a media player.",
+  "video_id": "REFERENCE_VIDEO_ID",
+  "source_sha256": null,
+  "duration_seconds": {
+    "value": null,
+    "tool": "e.g. ffprobe / VLC player readout, recorded for review purposes only"
+  },
+  "major_shot_boundaries_note": "Human-observed major shot boundaries (approximate is fine).",
+  "major_shot_boundaries_seconds": [],
+  "visible_key_text": ["Exact key on-screen text observed by the human reviewer."],
+  "key_dialogue": [
+    {
+      "timestamp_seconds": null,
+      "text": ""
+    }
+  ],
+  "high_level_notes": {
+    "hook": "",
+    "narrative": "",
+    "commercial_elements": ""
+  },
+  "reviewer": null,
+  "reviewed_at": null
+}
