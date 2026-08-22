@@ -1,40 +1,60 @@
 {
-  "schema_version": "0.1",
-  "platform": "tiktok",
-  "video_id": "7300000000000000001",
-  "source_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001",
-  "created_at_source": "2023-11-14T22:13:20+00:00",
-  "projected_at": "2026-01-02T10:05:00+00:00",
-  "projection_source": {
-    "creative_ir_schema_version": "0.1",
-    "decompilation_pipeline_version": "0.1.0"
+  "schema": {
+    "name": "canonical_ir",
+    "version": "0.1"
   },
-  "duration_seconds": 21.5,
-  "observed": {
+  "source": {
+    "platform": "tiktok",
+    "video_id": "7300000000000000001",
+    "source_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001"
+  },
+  "decompilation_ref": {
+    "pipeline_version": "0.0.0-dev",
+    "prompt_version": "decompile_v1",
+    "annotation_mode": "automated"
+  },
+  "features": {
+    "hook_present": true,
+    "hook_type": "visual_shock",
+    "hook_end_seconds": 2.5,
     "shot_count": 3,
-    "shot_duration_mean_seconds": 7.166667,
     "shot_duration_min_seconds": 6.5,
-    "shot_duration_max_seconds": 8.2,
-    "subject_categories": ["food", "person"],
-    "has_on_screen_text": true,
-    "on_screen_text_role": "hook_text",
-    "has_spoken_dialogue": true,
-    "camera_motion_categories": ["static", "handheld"],
-    "transition_categories": ["cut", "jump_cut"],
-    "audio_categories": ["music", "ambient", "dialogue"],
-    "hook_start_seconds": 0.0,
-    "first_product_appearance_seconds": null
-  },
-  "inferred": {
+    "shot_duration_max_seconds": 8.0,
+    "shot_duration_mean_seconds": 7.166666666666667,
+    "subject_categories": [
+      "food",
+      "person_creator",
+      "environment"
+    ],
     "commercial_status": "non_commercial",
-    "hook_type": "curiosity_gap",
-    "narrative_structure": "before_after",
-    "attention_mechanism_labels": ["pacing"],
-    "persuasion_mechanism_labels": [],
-    "proof_type": null,
-    "trust_signal_count": 0,
-    "objection_count": 0,
-    "cta_type": null,
-    "overall_confidence": "high"
+    "product_present": false,
+    "first_product_appearance_seconds": null,
+    "visible_text_present": true,
+    "visible_text_roles": [
+      "instructional"
+    ],
+    "spoken_dialogue_present": false,
+    "camera_motion_categories": [
+      "static"
+    ],
+    "transition_categories": [
+      "none_single_shot",
+      "jump_cut",
+      "cut"
+    ],
+    "music_present": true,
+    "sfx_present": true,
+    "narrative_structure": "tutorial_steps",
+    "attention_mechanism_labels": [
+      "end_payoff_reveal",
+      "macro_food_visuals",
+      "text_overlay_wayfinding"
+    ],
+    "cta_type": "not_applicable",
+    "proof_labels": [],
+    "trust_labels": [],
+    "persuasion_labels": [
+      "process_transparency_builds_trust"
+    ]
   }
 }

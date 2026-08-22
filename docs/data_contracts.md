@@ -1,136 +1,161 @@
 # Data Contracts v0.1
 
-Three versioned contracts ground all downstream pipelines. Later stages must
-validate against these JSON Schemas (Draft 2020-12) instead of inventing ad-hoc
-dictionaries. JSON Schema is the persisted contract; Python code only validates
-against it.
+Three versioned JSON Schema (Draft 2020-12) contracts govern all downstream
+pipelines. The schemas under `schemas/` are the persisted contracts; the
+Python helpers in `src/tiktok_analytics_factory/contracts/` only validate and
+project against them.
 
-| Contract | Schema | Example | Purpose |
-|---|---|---|---|
-| CreativeIR v0.1 | `schemas/creative_ir_v0_1.json` | `examples/creative_ir_v0_1_reference.json` | Full, auditable creative decompilation of one video |
-| CanonicalIR v0.1 | `schemas/canonical_ir_v0_1.json` | `examples/canonical_ir_v0_1_reference.json` | Compact model-facing projection for analytics/ranking |
-| Performance v0.1 | `schemas/performance_v0_1.json` | `examples/performance_v0_1_reference.json` | Raw platform metric snapshots |
+| Contract | Schema | Purpose |
+|---|---|---|
+| CreativeIR v0.1 | `schemas/creative_ir_v0_1.json` | Rich, auditable creative decompilation of one video |
+| CanonicalIR v0.1 | `schemas/canonical_ir_v0_1.json` | Compact model-facing projection for analytics/ranking |
+| Performance v0.1 | `schemas/performance_v0_1.json` | Raw observed platform metric snapshots |
+
+Reference examples live in `examples/*_reference.json`. They are grounded in
+the issue #2 reference ingestion (`@bakerylab` sourdough video,
+`7300000000000000001`), which is **non-commercial**. The commercial branch of
+CreativeIR is exercised by a synthetic fixture in
+`tests/test_contracts.py::test_synthetic_commercial_branch_projects`; we do
+not pretend the reference video is commercial.
 
 ## Global conventions
 
-- **Timeline timestamps** are seconds (`float`) from the beginning of the media,
-  never wall-clock offsets.
-- **Unknown is not zero and not fabricated.** Unknown values are `null` or an
-  explicit enum member such as `unknown` / `none_observed`, depending on field
-  semantics (see below). `0` always means "observed zero".
-- **Certainty** on transcribed text: `exact` = verbatim from deterministic
-  evidence (OCR/ASR with high confidence); `uncertain` = model transcription.
-- **Confidence** (inferred fields) is a closed enum: `high` / `medium` / `low`.
-- Every record carries a `schema_version` and stable source identity
-  (platform + video ID, plus source URL where appropriate).
+- **Versioning.** Every object carries `schema: {name, version}` with a
+  literal version (`"0.1"`). Breaking changes require a new file
+  (`*_v0_2.json`), never an edit in place.
+- **Timeline units.** All timeline timestamps (`start_seconds`,
+  `end_seconds`, hook timing, payoff timing, etc.) are **seconds from the
+  beginning of the media**.
+- **Unknown is never fabricated certainty.**
+  - Nullable fields: JSON `null` means *unknown / not derivable*. It never
+    means zero.
+  - Closed enums that need an "we cannot tell" value use the explicit string
+    `unknown` (e.g. `framing`, `camera_movement`, `hook_type.value`).
+  - Audio observations carry per-channel certainty:
+    `observed | uncertain | absent | unknown`.
+  - Text transcription carries an `exact: boolean`: verbatim vs approximate.
+  - Inferred fields carry `confidence: high | medium | low` plus optional
+    `rationale`.
 
 ## CreativeIR v0.1
 
-Top-level blocks, deliberately separated:
+Top-level blocks are mandatory and semantically separated:
 
-| Block | Semantics |
-|---|---|
-| `source` | Normalized pointer to the ingested artifact. Does **not** duplicate the full raw metadata payload; carries caption/hashtags needed for analysis and an artifact hash or manifest reference. |
-| `decompilation` | Provenance of this annotation: schema version, pipeline version, exact model ID, provider, prompt version, `created_at`, `annotation_mode` (`automated`/`manual`/`hybrid`). |
-| `observed` | Claims grounded in source evidence: media summary, hook/narrative/marketing evidence, ordered `shots[]`. |
-| `inferred` | Interpretation, never fact: concept, audience hypothesis, hook type/mechanism, narrative structure, attention/persuasion mechanisms, commercial interpretation. Rich fields carry `confidence` and optional rationale evidence refs. |
-| `generation` | Optional; model-agnostic reconstruction instructions only. Vendor-specific fields (`higgsfield_prompt`, `veo_prompt`, Remotion component names) are forbidden by the schema. |
+- **`source`** — normalized pointer to the ingested video (platform, video
+  ID, source URL, creator handle when known, caption/hashtags, duration,
+  published_at, artifact hash, manifest reference). It deliberately does not
+  duplicate the full raw metadata payload; the manifest carries that.
+- **`decompilation`** — provenance of the run that produced this object:
+  pipeline version, exact model ID, provider, prompt version, `created_at`,
+  and `annotation_mode` (`automated | manual | hybrid`).
+- **`observed`** — claims grounded in source evidence only. Video-level
+  summary, hook evidence, narrative evidence, marketing evidence, first
+  product appearance timing, and ordered `shots[]`. Every shot has a stable
+  ID (`shot_NNN`), start/end seconds, subjects/actions, visual description,
+  framing, camera movement, on-screen text, spoken dialogue, audio
+  observations with certainty, transition-in, and `evidence[]` entries whose
+  `kind` distinguishes `deterministic` facts from `model_observation`
+  claims.
+- **`inferred`** — interpretation, never fact. Concept, audience hypothesis,
+  hook type/mechanism, narrative structure, attention mechanisms, persuasion
+  mechanisms, and `commercial`. Interpretive fields wrap their value with
+  `confidence` and optional rationale/evidence refs.
+- **`generation`** — allowed **only** here: model-agnostic reconstruction
+  instructions (global brief, per-shot reconstruction intent keyed by
+  `shot_id`, pacing, text treatment, transitions, continuity constraints,
+  payoff timing). Vendor-specific syntax (`higgsfield_prompt`, `veo_prompt`,
+  Remotion component names) is forbidden by design.
 
-### Shots
+### Commercial analysis and `not_applicable`
 
-Each shot has a stable ID (`shot-01`, `shot-02`, ...), start/end seconds,
-subjects/actions with subject categories, visual description, framing scale,
-camera movement (only when genuinely observable — otherwise `unknown`),
-on-screen text and spoken dialogue each with `exact`/`uncertain` status, audio
-observations with explicit uncertainty, entering transition, and `evidence`
-references that distinguish `deterministic` facts (timecodes, OCR regions, ASR
-spans) from `model` observations.
+`inferred.commercial.status` is one of:
 
-Shot-level visual/audio descriptions live **only** inside `observed.shots`;
-there are no redundant top-level duplicates.
+- `commercial` — `details` is **required** and contains product presence,
+  first product appearance seconds, problem/desire, promise/claim, proof
+  type, trust signals, objections addressed, offer mechanics, and CTA
+  (literal text + `text_exact` + closed-type enum).
+- `non_commercial` — `details` must be `null`. This is the explicit
+  `not_applicable` mechanism: no product/CTA fields are invented.
+- `uncertain` — `details` may be `null` or partially filled with
+  low-confidence labels.
 
-### Commercial vs non-commercial
-
-`inferred.commercial_interpretation.status` is one of:
-
-- `commercial` — product fields populated;
-- `non_commercial` — product/CTA fields must be `null`; no invented product data;
-- `uncertain` — status unclear; product fields may be null.
-
-Commercial content can express product presence, first product appearance
-(seconds), problem/desire, promise/claim, proof type, trust signals, objections
-addressed, offer, CTA text/type. The reference TikTok (#2 sourdough video) is
-**non-commercial**; the synthetic commercial branch is exercised by a test
-fixture (`SYNTHETIC_COMMERCIAL_CREATIVE` in `tests/test_contracts.py`) rather
-than by pretending the reference video is commercial.
+The schema enforces the non_commercial → `null details` rule via `if/then`.
 
 ## CanonicalIR v0.1
 
-Compact projection consumed by analytics/ranking. Contains only controlled
-enums, booleans, counts, timing and numeric fields, plus minimal labels where
-controlled vocabulary would destroy information (mechanism labels).
+A compact projection consumed by feature extraction/ranking. Properties:
 
-Deliberately excluded:
-
-- the entire `generation` block and any reconstruction prose (schema rejects
-  additional properties, so `generation` cannot appear);
-- any raw performance values (`views`, `likes`, ...) — schema rejects them;
-  performance lives exclusively in Performance v0.1 records joined by video ID;
-- long free-text from CreativeIR — dropped, never serialized into an `extra`
-  blob.
-
-Field set: duration, shot count and shot-duration distribution, subject
-categories, on-screen text presence/role, spoken dialogue presence, camera-motion
-categories, transition categories, audio categories, hook timing/type,
-narrative structure, attention/persuasion mechanism labels, proof type,
-trust-signal and objection counts, CTA type, commercial status, overall
-confidence. A ranker should need nothing else from CreativeIR prose.
+- Contains only controlled enums, booleans, counts, timing numbers, label
+  lists, and minimal provenance (`decompilation_ref`). Free prose is gone;
+  the only preserved "stable text" is label strings copied from inferred
+  mechanism lists.
+- `additionalProperties: false` at every level means a `generation` block or
+  any raw performance payload **cannot validate**.
+- Nullability semantics for features: `null` = unknown/not determinable;
+  `false` = explicitly observed as absent. Example: `music_present: true`
+  means music was observed somewhere; `false` means every shot's audio was
+  marked `absent`; `null` covers uncertain/unknown mixes.
+- `cta_type` uses `"not_applicable"` for non-commercial videos and `null`
+  for uncertain/commercial-without-CTA.
+- Raw performance values are structurally excluded; join to Performance
+  records via `source.video_id` only.
 
 ## CreativeIR → CanonicalIR projection
 
-Implemented in `tiktok_analytics_factory.contracts.projection`.
+Implemented in
+`tiktok_analytics_factory.contracts.project_creative_to_canonical`:
 
-- Pure function: same validated CreativeIR input always yields identical output.
-- No model calls.
-- Input must validate against the CreativeIR schema; invalid shots (end <=
-  start, out-of-order starts) raise `ProjectionError`. Failures are loud.
-- Output is itself validated against CanonicalIR v0.1 before being returned.
-- Fields absent from CanonicalIR are intentionally dropped (not accumulated).
-- `projected_at` is the single caller-supplied timestamp; everything else derives
-  deterministically from the CreativeIR payload.
-
-Projection conventions worth knowing:
-- `subject_categories`, `camera_motion_categories`, `transition_categories`,
-  `audio_categories`: unique categories encountered across shots, in encounter
-  order; `unknown`/`none` values dropped.
-- `on_screen_text_role`: `cta` if any overlay matches CTA keywords, else
-  `hook_text` if an `exact` overlay appears within the first 3 s, else
-  `caption_subtitle` if any overlay exists, else `none_observed`.
-- `trust_signal_count` / `objection_count`: counts derived from the commercial
-  interpretation lists (0 for non-commercial).
+- Pure function; same input → same output; **no model calls**.
+- Input must be valid CreativeIR v0.1 (schema + semantic checks); invalid
+  input raises `ContractValidationError` loudly.
+- Output is re-validated against CanonicalIR before returning.
+- Fields not representable in CanonicalIR are dropped entirely — there is no
+  `extra` blob.
+- Deterministic rules (documented, testable):
+  - `subject_categories`: keyword classification of shot subjects
+    (person_creator / food / environment / product), order-preserving,
+    deduplicated; `none_visible` when no shot lists subjects.
+  - `visible_text_roles`: `promotional` if text matches promo keywords
+    (link/shop/buy/%/off/code/bio), else `instructional`.
+  - `camera_motion_categories` / `transition_categories`: unique values in
+    order of appearance, skipping `unknown`.
+  - `music_present` / `sfx_present`: tri-state collapse over per-shot
+    certainty values (`any observed → true`; `all absent → false`;
+    otherwise `null`).
+  - Duration stats computed directly from shot boundaries; mean is a plain
+    arithmetic mean.
+  - Mechanism label lists are sorted for stable output.
+- The committed example `examples/canonical_ir_v0_1_reference.json` must be
+  byte-for-byte reproducible via the projection from the committed Creative
+  reference (enforced by `test_projection_matches_committed_reference_example`).
 
 ## Performance v0.1
 
-One record = one raw observation snapshot of one video at one instant.
+Raw platform-metric snapshots only. One record = one observation moment.
 
-- Metrics (`views`, `likes`, `comments`, `shares`, optional `saves`,
-  `follower_count_at_observation`) are nullable integers >= 0.
-  **`null` = unknown/unavailable; `0` = observed zero. Never conflate them.**
-- Multiple observations of the same video are separate immutable records keyed
-  by `observed_at`; old snapshots are never mutated.
-- `published_at` / `observed_at` are required ISO-8601 UTC timestamps;
-  `age_since_publish_seconds` may be stored directly (and may be null when
-  either endpoint is unknown).
-- `provenance` records collector name/version, source URL, and a reference to
-  the immutable raw payload backing the snapshot for auditability.
-- Forbidden by design: virality scores, residuals, normalized labels, ranker
-  outputs. Those belong to later issues.
+- Required identity: platform, video_id, observed_at, collector provenance
+  (name, collected_at, method, raw_payload_reference).
+- `published_at` nullable; `age_since_publish_seconds` derived and
+  cross-checked against both timestamps (±1s tolerance) by the semantic
+  validator; null when published_at is null.
+- Metrics are nullable integers ≥ 0. **`0` means observed zero; `null` means
+  unknown/not exposed.** `saves` included only when truly available.
+- `follower_count_at_observation` recorded only if publicly available at the
+  observation time.
+- Snapshots are append-only: multiple observations of the same video are
+  separate records with distinct `observed_at`; old snapshots are never
+  mutated.
+- Forbidden by schema (`additionalProperties: false`) and by policy:
+  `virality_score`, residuals, normalized labels, ranker outputs. Those
+  belong to later normalization issues and reference this contract by
+  `(video_id, observed_at)`.
 
 ## Which object do I use?
 
-- **Modeling/ranking features:** CanonicalIR only. Do not parse Gemini
-  reconstruction prose, and never mix raw performance into creative features —
-  join Performance snapshots separately by video ID when training targets exist.
-- **Inspection, audit, decompilation quality review, reconstruction briefs:**
-  CreativeIR (its `generation` block must never leak into modeling inputs).
-- **Any engagement number:** Performance v0.1 snapshots only.
+- **Inspecting/auditing decompilation quality or driving generation** →
+  CreativeIR v0.1.
+- **Feature extraction, dataset building, ranking models** → CanonicalIR
+  v0.1 only. Never train on CreativeIR prose, never use `generation`.
+- **Any performance modeling** → join CanonicalIR features with Performance
+  v0.1 snapshots by `video_id`; normalization/residual labels come later and
+  must not be written back into either v0.1 contract.

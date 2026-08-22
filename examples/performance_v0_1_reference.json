@@ -1,26 +1,27 @@
 {
-  "schema_version": "0.1",
+  "schema": { "name": "performance", "version": "0.1" },
   "platform": "tiktok",
   "video_id": "7300000000000000001",
   "source_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001",
   "creator_handle": "bakerylab",
   "creator_id": "700123456",
   "published_at": "2023-11-14T22:13:20+00:00",
-  "observed_at": "2026-01-01T00:00:00+00:00",
-  "age_since_publish_seconds": 64627600.0,
+  "observed_at": "2026-08-22T12:00:00+00:00",
+  "age_since_publish_seconds": 87400000,
   "metrics": {
     "views": 15234,
     "likes": 812,
     "comments": 43,
     "shares": 7,
-    "saves": null,
-    "follower_count_at_observation": null
+    "saves": null
   },
-  "provenance": {
-    "collector_name": "fake",
-    "collector_version": "0.0-test",
-    "collected_from_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001",
-    "raw_payload_reference": "data/raw/7300000000000000001/metadata.raw.json",
-    "notes": null
-  }
+  "follower_count_at_observation": null,
+  "collector": {
+    "name": "fake",
+    "version": "0.0-test",
+    "method": "metadata endpoint payload",
+    "collected_at": "2026-01-01T00:00:00+00:00",
+    "raw_payload_reference": "data/raw/7300000000000000001/metadata.raw.json"
+  },
+  "notes": "Reference snapshot derived from the issue #2 ingestion fixture; saves and follower count were not exposed by the collector, so they are null (unknown), not zero."
 }
