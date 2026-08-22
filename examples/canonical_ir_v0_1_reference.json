@@ -1,0 +1,44 @@
+{
+  "schema": {
+    "name": "canonical_ir",
+    "version": "0.1"
+  },
+  "source": {
+    "platform": "tiktok",
+    "video_id": "6718335390845095173",
+    "source_url": "https://www.tiktok.com/@scout2015/video/6718335390845095173"
+  },
+  "decompilation_ref": {
+    "pipeline_version": "0.0.0-dev",
+    "prompt_version": "none",
+    "annotation_mode": "manual"
+  },
+  "features": {
+    "hook_present": null,
+    "hook_type": "unknown",
+    "hook_end_seconds": null,
+    "shot_count": 1,
+    "shot_duration_min_seconds": 10.0,
+    "shot_duration_max_seconds": 10.0,
+    "shot_duration_mean_seconds": 10.0,
+    "subject_categories": [
+      "none_visible"
+    ],
+    "commercial_status": "uncertain",
+    "product_present": null,
+    "first_product_appearance_seconds": null,
+    "visible_text_present": false,
+    "visible_text_roles": [],
+    "spoken_dialogue_present": false,
+    "camera_motion_categories": [],
+    "transition_categories": [],
+    "music_present": null,
+    "sfx_present": null,
+    "narrative_structure": "unknown",
+    "attention_mechanism_labels": [],
+    "cta_type": null,
+    "proof_labels": [],
+    "trust_labels": [],
+    "persuasion_labels": []
+  }
+}

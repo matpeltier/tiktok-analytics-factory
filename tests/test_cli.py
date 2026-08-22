@@ -33,6 +33,6 @@ def test_cli_success_prints_id_and_dir(tmp_path, monkeypatch):
     from tiktok_analytics_factory.ingestion.__main__ import main
 
     monkeypatch.setattr(collectors_mod, "DEFAULT_COLLECTOR_ORDER", [FakeCollector])
-    rc = main(["ingest", "--url", "https://www.tiktok.com/@x/video/7300000000000000001",
+    rc = main(["ingest", "--url", "https://www.tiktok.com/@x/video/1111222233334444555",
                "--output-root", str(tmp_path / "raw")])
     assert rc == 0

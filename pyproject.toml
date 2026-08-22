@@ -19,6 +19,7 @@ ingestion = [
 ]
 dev = [
     "pytest>=8",
+    "jsonschema>=4.21",
 ]
 
 [tool.setuptools.packages.find]

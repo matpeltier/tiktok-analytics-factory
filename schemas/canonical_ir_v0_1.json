@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/matpeltier/tiktok-analytics-factory/schemas/canonical_ir_v0_1.json",
+  "title": "CanonicalIR v0.1",
+  "description": "Compact model-facing projection of CreativeIR for analytics/ranking. Contains only controlled enums, booleans, counts, timing, and minimal stable text. Deliberately excludes the generation block and long reconstruction prose, and never embeds raw performance values.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source", "decompilation_ref", "features"],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "canonical_ir" },
+        "version": { "const": "0.1" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "video_id"],
+      "properties": {
+        "platform": { "const": "tiktok" },
+        "video_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": ["string", "null"], "format": "uri" }
+      }
+    },
+    "decompilation_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pipeline_version", "prompt_version"],
+      "description": "Minimal provenance pointer back to the CreativeIR decompilation this was projected from.",
+      "properties": {
+        "pipeline_version": { "type": "string", "minLength": 1 },
+        "prompt_version": { "type": "string", "minLength": 1 },
+        "annotation_mode": { "enum": ["automated", "manual", "hybrid"] }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The compact feature vector. Null means unknown/absent per docs/data_contracts.md; booleans are explicit projections of observed/inferred state.",
+      "required": [
+        "hook_present",
+        "shot_count",
+        "shot_duration_mean_seconds",
+        "subject_categories",
+        "commercial_status",
+        "visible_text_present",
+        "spoken_dialogue_present",
+        "camera_motion_categories",
+        "transition_categories",
+        "music_present",
+        "sfx_present",
+        "cta_type",
+        "proof_labels",
+        "trust_labels",
+        "persuasion_labels"
+      ],
+      "properties": {
+        "hook_present": {
+          "type": ["boolean", "null"],
+          "description": "true/false when determinable from observed hook evidence; null when unknown."
+        },
+        "hook_type": {
+          "anyOf": [
+            { "enum": [null, "unknown"] },
+            { "enum": ["question","bold_claim","curiosity_gap","visual_shock","direct_address","problem_statement","before_after_tease","social_proof_open","other"] }
+          ]
+        },
+        "hook_end_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "shot_count": { "type": "integer", "minimum": 1 },
+        "shot_duration_min_seconds": { "type": ["number", "null"], "minimum": 0 },
+        "shot_duration_max_seconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "shot_duration_mean_seconds": { "type": ["number", "null"], "minimum": 0 },
+        "subject_categories": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "person_creator",
+              "other_people",
+              "product",
+              "food",
+              "environment",
+              "text_overlay_only",
+              "none_visible"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "commercial_status": {
+          "enum": ["commercial", "non_commercial", "uncertain"]
+        },
+        "product_present": {
+          "type": ["boolean", "null"],
+          "description": "Whether a product appears; null when uncertain."
+        },
+        "first_product_appearance_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "visible_text_present": {
+          "type": ["boolean", "null"],
+          "description": "Any on-screen text observed in any shot."
+        },
+        "visible_text_roles": {
+          "type": "array",
+          "items": {
+            "enum": ["caption_style", "instructional", "promotional", "decorative"]
+          },
+          "uniqueItems": true
+        },
+        "spoken_dialogue_present": {
+          "type": ["boolean", "null"],
+          "description": "Any spoken dialogue observed."
+        },
+        "camera_motion_categories": {
+          "type": "array",
+          "items": {
+            "enum": ["static", "handheld", "pan", "tilt", "zoom_in", "zoom_out", "tracking"]
+          },
+          "uniqueItems": true
+        },
+        "transition_categories": {
+          "type": "array",
+          "items": {
+            "enum": ["cut", "jump_cut", "whip_pan", "match_cut", "fade", "wipe", "none_single_shot"]
+          },
+          "uniqueItems": true
+        },
+        "music_present": {
+          "type": ["boolean", "null"],
+          "description": "true = music observed somewhere, false = explicitly absent, null = unknown."
+        },
+        "sfx_present": { "type": ["boolean", "null"] },
+        "narrative_structure": {
+          "anyOf": [
+            { "enum": [null, "unknown"] },
+            { "enum": ["problem_solution", "before_after", "tutorial_steps", "storytime", "listicle", "single_beat_no_narrative", "other"] }
+          ]
+        },
+        "attention_mechanism_labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "description": "Lowercase labels copied from inferred.attention_mechanisms."
+        },
+        "cta_type": {
+          "anyOf": [
+            { "enum": [null, "not_applicable"] },
+            { "enum": ["link_in_bio", "follow", "comment", "share", "save", "shop_now", "affiliate_link", "other"] }
+          ],
+          "description": "not_applicable for non-commercial videos; null for commercial-uncertain without CTA."
+        },
+        "proof_labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "trust_labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "persuasion_labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "$comment": "additionalProperties:false at every level guarantees a `generation` block or any raw-performance payload inside features cannot validate."
+}

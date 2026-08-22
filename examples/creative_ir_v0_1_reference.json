@@ -1,0 +1,103 @@
+{
+  "schema": { "name": "creative_ir", "version": "0.1" },
+  "source": {
+    "platform": "tiktok",
+    "video_id": "6718335390845095173",
+    "source_url": "https://www.tiktok.com/@scout2015/video/6718335390845095173",
+    "creator_handle": "scout2015",
+    "caption": "Scramble up ur name & I’ll try to guess it😍❤️ #foryoupage #petsoftiktok #aesthetic",
+    "hashtags": ["foryoupage", "petsoftiktok", "aesthetic"],
+    "duration_seconds": 10.0,
+    "published_at": "2019-07-27T13:32:38+00:00",
+    "artifact_sha256": "5fa05e7138b9e28ae66b4647e6828287692b91e23d4b3c2afc2ab334d31e5261",
+    "manifest_reference": "data/raw/6718335390845095173/manifest.json"
+  },
+  "decompilation": {
+    "schema_version": "0.1",
+    "pipeline_version": "0.0.0-dev",
+    "model_id": "none",
+    "provider": "none",
+    "prompt_version": "none",
+    "created_at": "2026-08-22T20:02:40+00:00",
+    "annotation_mode": "manual"
+  },
+  "observed": {
+    "summary": "Metadata-only reference record. Deterministic collector evidence: public caption 'Scramble up ur name & I’ll try to guess it😍❤️ #foryoupage #petsoftiktok #aesthetic' and duration_seconds=10. Media frames and audio were NOT inspected when this record was authored, so all visual and audio content remains unknown rather than assumed.",
+    "hook": {
+      "description": null,
+      "start_seconds": null,
+      "end_seconds": null,
+      "evidence": [
+        {
+          "kind": "deterministic",
+          "reference": "examples/artifacts/metadata_6718335390845095173.raw.json (title, timestamp, duration fields)"
+        }
+      ]
+    },
+    "narrative_evidence": null,
+    "marketing_evidence": null,
+    "first_product_appearance_seconds": null,
+    "shots": [
+      {
+        "shot_id": "shot_001",
+        "start_seconds": 0.0,
+        "end_seconds": 10.0,
+        "subjects": [],
+        "actions": [],
+        "visual_description": "Not inspected: no frame-level observation was performed for this reference record, so the visual content of the full 0-10s span is unknown.",
+        "framing": "unknown",
+        "camera_movement": "unknown",
+        "on_screen_text": [],
+        "spoken_dialogue": [],
+        "audio": {
+          "music": null,
+          "music_certainty": "unknown",
+          "sfx": null,
+          "sfx_certainty": "unknown",
+          "ambience": null,
+          "ambience_certainty": "unknown"
+        },
+        "transition_in": "unknown",
+        "evidence": [
+          {
+            "kind": "deterministic",
+            "reference": "duration_seconds=10 from examples/artifacts/metadata_6718335390845095173.raw.json; media not inspected"
+          }
+        ]
+      }
+    ]
+  },
+  "inferred": {
+    "concept": {
+      "value": null,
+      "confidence": "low",
+      "rationale": "No media inspection was performed; only caption text is available, which is insufficient for a grounded concept claim."
+    },
+    "target_audience_hypothesis": {
+      "value": "Possibly viewers engaging with pet-related short-form content (#petsoftiktok hashtag).",
+      "confidence": "low",
+      "rationale": "Hypothesized from caption hashtags only; no visual confirmation."
+    },
+    "hook_type": {
+      "value": "unknown",
+      "confidence": "medium",
+      "rationale": "Media not inspected; hook classification impossible without visual/audio evidence."
+    },
+    "hook_mechanism": {
+      "label": "unknown",
+      "confidence": "medium",
+      "rationale": "Media not inspected."
+    },
+    "narrative_structure": {
+      "value": "unknown",
+      "confidence": "medium",
+      "rationale": "Media not inspected."
+    },
+    "attention_mechanisms": [],
+    "persuasion_mechanisms": [],
+    "commercial": {
+      "status": "uncertain",
+      "details": null
+    }
+  }
+}

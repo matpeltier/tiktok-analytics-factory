@@ -7,11 +7,11 @@ from tiktok_analytics_factory.ingestion.errors import InvalidURLError
 
 
 def test_extracts_id_from_canonical_url():
-    assert extract_video_id("https://www.tiktok.com/@user/video/7300000000000000001") == "7300000000000000001"
+    assert extract_video_id("https://www.tiktok.com/@user/video/1111222233334444555") == "1111222233334444555"
 
 
 def test_accepts_raw_numeric_id():
-    assert extract_video_id("7300000000000000001") == "7300000000000000001"
+    assert extract_video_id("1111222233334444555") == "1111222233334444555"
 
 
 def test_short_link_yields_token_not_crash():
@@ -29,4 +29,4 @@ def test_invalid_urls_raise(bad):
 
 
 def test_canonical_url_roundtrip():
-    assert canonical_url("7300000000000000001").endswith("/video/7300000000000000001")
+    assert canonical_url("1111222233334444555").endswith("/video/1111222233334444555")

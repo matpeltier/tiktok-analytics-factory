@@ -1,0 +1,27 @@
+{
+  "schema": { "name": "performance", "version": "0.1" },
+  "platform": "tiktok",
+  "video_id": "6718335390845095173",
+  "source_url": "https://www.tiktok.com/@scout2015/video/6718335390845095173",
+  "creator_handle": "scout2015",
+  "creator_id": "53279706535428096",
+  "published_at": "2019-07-27T13:32:38+00:00",
+  "observed_at": "2026-08-22T20:02:40+00:00",
+  "age_since_publish_seconds": 223194602,
+  "metrics": {
+    "views": 159000,
+    "likes": 35100,
+    "comments": 5637,
+    "shares": null,
+    "saves": 645
+  },
+  "follower_count_at_observation": null,
+  "collector": {
+    "name": "yt-dlp",
+    "version": "2026.8.19",
+    "method": "yt-dlp --skip-download --dump-singlejson via ingestion CLI (public webpage metadata; media downloaded separately to data/raw)",
+    "collected_at": "2026-08-22T20:02:40+00:00",
+    "raw_payload_reference": "data/raw/6718335390845095173/metadata.raw.json (committed audit copy: examples/artifacts/metadata_6718335390845095173.raw.json)"
+  },
+  "notes": "Snapshot grounded in the raw yt-dlp payload collected live on this VPS with yt-dlp 2026.8.19 (pyktok attempted first and failed with collector_dependency_unavailable; fallback traced in data/raw/6718335390845095173/manifest.json). views/likes/comments/saves map directly from view_count/like_count/comment_count/save_count in that payload. shares is null because the payload exposes repost_count=1465 and the repost->shares mapping is unverified; it is deliberately not asserted as shares. follower_count_at_observation is null because the payload does not include creator follower count."
+}

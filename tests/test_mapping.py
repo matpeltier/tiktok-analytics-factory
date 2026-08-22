@@ -4,7 +4,7 @@ from tiktok_analytics_factory.ingestion.mapping import normalize_payload
 
 FIXTURE = {
     "desc": "Making sourdough #baking #bread",
-    "author": {"unique_id": "bakerylab", "uid": "700123456"},
+    "author": {"unique_id": "testcreator", "uid": "700123456"},
     "stats": {"play_count": 15234, "digg_count": 812, "comment_count": 43, "share_count": 7},
     "video": {"duration": 21.5},
     "music": {"title": "Loaf Anthem", "author": "DJ Yeast"},
@@ -13,9 +13,9 @@ FIXTURE = {
 
 
 def test_full_mapping():
-    meta = normalize_payload(FIXTURE, video_id="7300000000000000001", source_url="https://x", collector_name="fake")
+    meta = normalize_payload(FIXTURE, video_id="1111222233334444555", source_url="https://x", collector_name="fake")
     assert meta.platform == "tiktok"
-    assert meta.creator_handle == "bakerylab"
+    assert meta.creator_handle == "testcreator"
     assert meta.creator_id == "700123456"
     assert meta.hashtags == ["baking", "bread"]
     assert meta.published_at == "2023-11-14T22:13:20+00:00"
