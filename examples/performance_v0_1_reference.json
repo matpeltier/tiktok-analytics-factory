@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.1",
+  "platform": "tiktok",
+  "video_id": "7300000000000000001",
+  "source_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001",
+  "creator_handle": "bakerylab",
+  "creator_id": "700123456",
+  "published_at": "2023-11-14T22:13:20+00:00",
+  "observed_at": "2026-01-01T00:00:00+00:00",
+  "age_since_publish_seconds": 64627600.0,
+  "metrics": {
+    "views": 15234,
+    "likes": 812,
+    "comments": 43,
+    "shares": 7,
+    "saves": null,
+    "follower_count_at_observation": null
+  },
+  "provenance": {
+    "collector_name": "fake",
+    "collector_version": "0.0-test",
+    "collected_from_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001",
+    "raw_payload_reference": "data/raw/7300000000000000001/metadata.raw.json",
+    "notes": null
+  }
+}

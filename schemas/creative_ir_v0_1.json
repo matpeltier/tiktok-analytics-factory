@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiktok-analytics-factory/schemas/creative_ir_v0_1.json",
+  "title": "CreativeIR v0.1",
+  "description": "Rich, auditable creative decompilation of one short-form video. Timeline timestamps are seconds from the beginning of the media. Unknown values must be null or an explicit uncertainty marker; never fabricated certainty.",
+  "type": "object",
+  "required": ["schema_version", "source", "decompilation", "observed", "inferred"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "source": { "$ref": "#/$defs/source" },
+    "decompilation": { "$ref": "#/$defs/decompilation" },
+    "observed": { "$ref": "#/$defs/observed" },
+    "inferred": { "$ref": "#/$defs/inferred" },
+    "generation": { "$ref": "#/$defs/generation" }
+  },
+  "$defs": {
+    "iso8601": { "type": ["string", "null"], "format": "date-time", "description": "ISO-8601 UTC timestamp; null when unknown." },
+    "seconds": { "type": "number", "minimum": 0 },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "certainty": { "enum": ["exact", "uncertain"], "description": "exact = verbatim from source evidence; uncertain = model transcription/approximation." },
+    "evidence_ref": {
+      "type": "object",
+      "description": "Reference to evidence backing a claim. kind=deterministic means derived directly from the source artifact (e.g. ASR timecode, OCR region); kind=model means a model observation.",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["deterministic", "model"] },
+        "reference": { "type": ["string", "null"], "description": "Pointer into source artifacts, e.g. 'asr:0.0-2.1', 'ocr:shot-02', 'frame:00:03'." },
+        "note": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "description": "Normalized reference to the ingested source. Does not duplicate the full raw metadata payload.",
+      "required": ["platform", "video_id", "artifact_hash_or_manifest"],
+      "properties": {
+        "platform": { "const": "tiktok" },
+        "video_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": ["string", "null"], "format": "uri" },
+        "creator_handle": { "type": ["string", "null"] },
+        "caption": { "type": ["string", "null"], "description": "Caption text needed for analysis." },
+        "hashtags": { "type": "array", "items": { "type": "string" } },
+        "duration_seconds": { "$ref": "#/$defs/seconds" },
+        "published_at": { "$ref": "#/$defs/iso8601" },
+        "ingested_at": { "$ref": "#/$defs/iso8601" },
+        "artifact_hash_or_manifest": {
+          "type": "string",
+          "description": "Content hash of the immutable MP4 or a reference to its manifest.json."
+        }
+      },
+      "additionalProperties": false
+    },
+    "decompilation": {
+      "type": "object",
+      "description": "Provenance of how this CreativeIR was produced.",
+      "required": [
+        "schema_version",
+        "pipeline_version",
+        "model_id",
+        "provider",
+        "prompt_version",
+        "created_at",
+        "annotation_mode"
+      ],
+      "properties": {
+        "schema_version": { "const": "0.1" },
+        "pipeline_version": { "type": "string", "minLength": 1 },
+        "model_id": { "type": ["string", "null"], "description": "Exact model identifier; null only for manual annotation." },
+        "provider": { "type": ["string", "null"] },
+        "prompt_version": { "type": ["string", "null"] },
+        "created_at": { "$ref": "#/$defs/iso8601" },
+        "annotation_mode": { "enum": ["automated", "manual", "hybrid"] },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "text_observation": {
+      "type": "object",
+      "description": "A piece of on-screen text or spoken dialogue with explicit certainty.",
+      "required": ["text", "certainty"],
+      "properties": {
+        "text": { "type": "string" },
+        "certainty": { "$ref": "#/$defs/certainty" },
+        "start_seconds": { "$ref": "#/$defs/seconds" },
+        "end_seconds": { "$ref": "#/$defs/seconds" },
+        "evidence": { "$ref": "#/$defs/evidence_ref" }
+      },
+      "additionalProperties": false
+    },
+    "audio_observation": {
+      "type": "object",
+      "description": "Audio/music/SFX observation. Uncertainty is expressed via certainty=null-safe fields.",
+      "required": ["category"],
+      "properties": {
+        "category": { "enum": ["music", "dialogue", "sfx", "voiceover", "ambient", "silence", "other", "unknown"] },
+        "label": { "type": ["string", "null"], "description": "Track title / description; null when unknown." },
+        "certainty": { "$ref": "#/$defs/certainty" },
+        "start_seconds": { "$ref": "#/$defs/seconds" },
+        "end_seconds": { "$ref": "#/$defs/seconds" },
+        "evidence": { "$ref": "#/$defs/evidence_ref" }
+      },
+      "additionalProperties": false
+    },
+    "shot": {
+      "type": "object",
+      "required": ["shot_id", "start_seconds", "end_seconds"],
+      "properties": {
+        "shot_id": { "type": "string", "pattern": "^shot-[0-9]{2,}$", "description": "Stable shot ID, ordered within the video." },
+        "start_seconds": { "$ref": "#/$defs/seconds" },
+        "end_seconds": { "$ref": "#/$defs/seconds", "description": "Must be > start_seconds." },
+        "subjects_and_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["subject", "action"],
+            "properties": {
+              "subject": { "type": "string" },
+              "action": { "type": "string" },
+              "subject_category": { "enum": ["person", "product", "food", "animal", "text_graphic", "environment", "other", "unknown"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "visual_description": { "type": ["string", "null"] },
+        "framing_shot_scale": { "enum": ["extreme_close_up", "close_up", "medium", "wide", "extreme_wide", "unknown", null] },
+        "camera_movement": { "enum": ["static", "pan", "tilt", "zoom_in", "zoom_out", "handheld", "tracking", "unknown", null], "description": "Only when genuinely observable; use unknown otherwise." },
+        "on_screen_text": { "type": "array", "items": { "$ref": "#/$defs/text_observation" } },
+        "spoken_dialogue": { "type": "array", "items": { "$ref": "#/$defs/text_observation" } },
+        "audio": { "type": "array", "items": { "$ref": "#/$defs/audio_observation" } },
+        "editing_transition_in": {
+          "enum": ["cut", "fade", "whip_pan", "jump_cut", "match_cut", "none", "unknown", null],
+          "description": "Transition entering this shot."
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence_ref" },
+          "description": "Distinguishes deterministic facts (ASR/OCR/timecodes) from model observations."
+        }
+      },
+      "additionalProperties": false
+    },
+    "commercial_analysis": {
+      "type": "object",
+      "description": "Commercial interpretation. For non-commercial videos set status=not_applicable and leave product fields null.",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["commercial", "non_commercial", "uncertain"] },
+        "product_presence": { "enum": ["central", "supporting", "absent", "unknown", null] },
+        "first_product_appearance_seconds": { "anyOf": [{ "$ref": "#/$defs/seconds" }, { "type": "null" }] },
+        "problem_or_desire": { "type": ["string", "null"] },
+        "promise_or_claim": { "type": ["string", "null"] },
+        "proof_type": { "enum": ["demonstration", "testimonial", "before_after", "data", "authority", "none_observed", "unknown", null] },
+        "trust_signals": { "type": "array", "items": { "type": "string" } },
+        "objections_addressed": { "type": "array", "items": { "type": "string" } },
+        "offer": { "type": ["string", "null"] },
+        "cta_text": { "type": ["string", "null"] },
+        "cta_type": { "enum": ["link_in_bio", "verbal_cta", "on_screen_cta", "comment_prompt", "follow_prompt", "none_observed", "unknown", null] },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "observed": {
+      "type": "object",
+      "description": "Claims grounded in source evidence. No generation prose here.",
+      "required": ["media_summary", "shots"],
+      "properties": {
+        "media_summary": { "type": ["string", "null"], "description": "Context summary grounded in visible/audible content." },
+        "hook_evidence": {
+          "type": ["object", "null"],
+          "properties": {
+            "description": { "type": ["string", "null"] },
+            "start_seconds": { "$ref": "#/$defs/seconds" },
+            "end_seconds": { "$ref": "#/$defs/seconds" },
+            "evidence_refs": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "narrative_evidence": {
+          "type": ["object", "null"],
+          "properties": {
+            "description": { "type": ["string", "null"] },
+            "beats_seconds": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label", "start_seconds"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "start_seconds": { "$ref": "#/$defs/seconds" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "marketing_evidence": {
+          "type": ["object", "null"],
+          "properties": {
+            "description": { "type": ["string", "null"] },
+            "evidence_refs": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "shots": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/shot" } }
+      },
+      "additionalProperties": false
+    },
+    "inferred": {
+      "type": "object",
+      "description": "Interpretation rather than observed fact. Rich fields carry confidence and rationale refs.",
+      "required": ["overall_concept"],
+      "properties": {
+        "overall_concept": {
+          "type": "object",
+          "required": ["statement"],
+          "properties": {
+            "statement": { "type": "string" },
+            "confidence": { "$ref": "#/$defs/confidence" },
+            "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "target_audience_hypothesis": {
+          "type": ["object", "null"],
+          "properties": {
+            "statement": { "type": ["string", "null"] },
+            "confidence": { "$ref": "#/$defs/confidence" },
+            "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "hook": {
+          "type": ["object", "null"],
+          "properties": {
+            "type": { "enum": ["question", "bold_claim", "curiosity_gap", "visual_shock", "problem_statement", "direct_address", "none_observed", "other", null] },
+            "mechanism": { "type": ["string", "null"], "description": "Free-text explanation of how the hook works." },
+            "timing_seconds": { "$ref": "#/$defs/seconds" },
+            "confidence": { "$ref": "#/$defs/confidence" },
+            "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "narrative_structure": {
+          "type": ["object", "null"],
+          "properties": {
+            "structure": { "enum": ["problem_solution", "tutorial_steps", "story_arc", "listicle", "single_beat", "before_after", "none_observed", "other", null] },
+            "confidence": { "$ref": "#/$defs/confidence" },
+            "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "attention_mechanisms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["mechanism"],
+            "properties": {
+              "mechanism": { "type": "string" },
+              "category": { "enum": ["pacing", "visual_change", "text_overlay", "audio_stinger", "open_loop", "pattern_interrupt", "other", null] },
+              "confidence": { "$ref": "#/$defs/confidence" },
+              "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "marketing_persuasion_mechanisms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["mechanism"],
+            "properties": {
+              "mechanism": { "type": "string" },
+              "category": { "enum": ["social_proof", "scarcity", "urgency", "authority", "reciprocity", "aspiration", "emotional_appeal", "other", null] },
+              "confidence": { "$ref": "#/$defs/confidence" },
+              "rationale_evidence_refs": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "commercial_interpretation": { "$ref": "#/$defs/commercial_analysis" }
+      },
+      "additionalProperties": false
+    },
+    "generation": {
+      "type": "object",
+      "description": "Model-agnostic reconstruction instructions. Vendor-specific prompt fields (higgsfield/veo/Remotion) are forbidden in this schema. Optional block; absent in CanonicalIR.",
+      "properties": {
+        "global_brief": { "type": "string" },
+        "timeline_pacing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["instruction"],
+            "properties": {
+              "start_seconds": { "$ref": "#/$defs/seconds" },
+              "end_seconds": { "$ref": "#/$defs/seconds" },
+              "instruction": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "per_shot_intent": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["shot_id", "instruction"],
+            "properties": {
+              "shot_id": { "type": "string" },
+              "instruction": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "text_treatment": { "type": ["string", "null"] },
+        "transition_editing_expectations": { "type": ["string", "null"] },
+        "continuity_constraints": { "type": "array", "items": { "type": "string" } },
+        "payoff_timing": {
+          "type": ["object", "null"],
+          "properties": {
+            "at_seconds": { "$ref": "#/$defs/seconds" },
+            "instruction": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

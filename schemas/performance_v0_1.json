@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiktok-analytics-factory/schemas/performance_v0_1.json",
+  "title": "Performance v0.1",
+  "description": "Raw observed platform metrics for one video at one observation time. Multiple snapshots of the same video are separate records; old snapshots are never mutated. Metrics are nullable: null = unknown/unavailable, 0 = observed zero. No labels, virality scores, residuals, or ranker outputs.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "platform",
+    "video_id",
+    "observed_at",
+    "published_at",
+    "metrics",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "platform": { "const": "tiktok" },
+    "video_id": { "type": "string", "minLength": 1 },
+    "source_url": { "type": ["string", "null"], "format": "uri" },
+    "creator_handle": { "type": ["string", "null"] },
+    "creator_id": { "type": ["string", "null"] },
+    "published_at": { "$ref": "#/$defs/iso8601" },
+    "observed_at": { "$ref": "#/$defs/iso8601" },
+    "age_since_publish_seconds": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "observed_at - published_at; may be null when either timestamp is unknown."
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["views", "likes", "comments", "shares"],
+      "additionalProperties": false,
+      "properties": {
+        "views": { "type": ["integer", "null"], "minimum": 0 },
+        "likes": { "type": ["integer", "null"], "minimum": 0 },
+        "comments": { "type": ["integer", "null"], "minimum": 0 },
+        "shares": { "type": ["integer", "null"], "minimum": 0 },
+        "saves": { "type": ["integer", "null"], "minimum": 0, "description": "Only when truly available from the platform." },
+        "follower_count_at_observation": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Raw collector/provenance info needed to audit the snapshot.",
+      "required": ["collector_name"],
+      "properties": {
+        "collector_name": { "type": "string", "minLength": 1 },
+        "collector_version": { "type": ["string", "null"] },
+        "collected_from_url": { "type": ["string", "null"], "format": "uri" },
+        "raw_payload_reference": {
+          "type": ["string", "null"],
+          "description": "Reference to the immutable raw payload artifact backing this snapshot, e.g. 'data/raw/<id>/metadata.raw.json#snapshot-3'."
+        },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "iso8601": { "type": "string", "format": "date-time" }
+  }
+}

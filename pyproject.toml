@@ -19,6 +19,8 @@ ingestion = [
 ]
 dev = [
     "pytest>=8",
+    "jsonschema>=4.21",
+    "rfc3339-validator>=0.1.4",
 ]
 
 [tool.setuptools.packages.find]

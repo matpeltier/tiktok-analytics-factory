@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiktok-analytics-factory/schemas/canonical_ir_v0_1.json",
+  "title": "CanonicalIR v0.1",
+  "description": "Compact, model-facing projection of CreativeIR for analytics/ranking. Deliberately excludes the generation block and long reconstruction prose. Never embeds raw performance values.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "platform",
+    "video_id",
+    "source_url",
+    "projected_at",
+    "projection_source",
+    "observed",
+    "inferred"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "platform": { "const": "tiktok" },
+    "video_id": { "type": "string", "minLength": 1 },
+    "source_url": { "type": ["string", "null"], "format": "uri" },
+    "created_at_source": { "$ref": "#/$defs/iso8601", "description": "published_at of the source video when known." },
+    "projected_at": { "$ref": "#/$defs/iso8601" },
+    "projection_source": {
+      "type": "object",
+      "description": "Provenance of the projection (which CreativeIR produced this).",
+      "required": ["creative_ir_schema_version", "decompilation_pipeline_version"],
+      "properties": {
+        "creative_ir_schema_version": { "type": "string" },
+        "decompilation_pipeline_version": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "duration_seconds": { "$ref": "#/$defs/seconds" },
+    "observed": { "$ref": "#/$defs/canonical_observed" },
+    "inferred": { "$ref": "#/$defs/canonical_inferred" }
+  },
+  "$defs": {
+    "iso8601": { "type": ["string", "null"], "format": "date-time" },
+    "seconds": { "type": ["number", "null"], "minimum": 0 },
+    "canonical_observed": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shot_count": { "type": ["integer", "null"], "minimum": 0 },
+        "shot_duration_mean_seconds": { "$ref": "#/$defs/seconds" },
+        "shot_duration_min_seconds": { "$ref": "#/$defs/seconds" },
+        "shot_duration_max_seconds": { "$ref": "#/$defs/seconds" },
+        "subject_categories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["person", "product", "food", "animal", "text_graphic", "environment", "other"] }
+        },
+        "has_on_screen_text": { "type": ["boolean", "null"] },
+        "on_screen_text_role": { "enum": ["hook_text", "caption_subtitle", "cta", "decorative", "none_observed", null] },
+        "has_spoken_dialogue": { "type": ["boolean", "null"] },
+        "camera_motion_categories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["static", "pan", "tilt", "zoom_in", "zoom_out", "handheld", "tracking"] }
+        },
+        "transition_categories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["cut", "fade", "whip_pan", "jump_cut", "match_cut"] }
+        },
+        "audio_categories": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["music", "dialogue", "sfx", "voiceover", "ambient", "silence", "other"] }
+        },
+        "hook_start_seconds": { "$ref": "#/$defs/seconds" },
+        "first_product_appearance_seconds": { "$ref": "#/$defs/seconds" }
+      }
+    },
+    "canonical_inferred": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commercial_status": { "enum": ["commercial", "non_commercial", "uncertain"] },
+        "hook_type": { "enum": ["question", "bold_claim", "curiosity_gap", "visual_shock", "problem_statement", "direct_address", "none_observed", "other", null] },
+        "narrative_structure": { "enum": ["problem_solution", "tutorial_steps", "story_arc", "listicle", "single_beat", "before_after", "none_observed", "other", null] },
+        "attention_mechanism_labels": { "type": "array", "items": { "type": "string" } },
+        "persuasion_mechanism_labels": { "type": "array", "items": { "type": "string" } },
+        "proof_type": { "enum": ["demonstration", "testimonial", "before_after", "data", "authority", "none_observed", "unknown", null] },
+        "trust_signal_count": { "type": ["integer", "null"], "minimum": 0 },
+        "objection_count": { "type": ["integer", "null"], "minimum": 0 },
+        "cta_type": { "enum": ["link_in_bio", "verbal_cta", "on_screen_cta", "comment_prompt", "follow_prompt", "none_observed", "unknown", null] },
+        "overall_confidence": { "enum": ["high", "medium", "low", null] }
+      }
+    }
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "schema_version": "0.1",
+  "source": {
+    "platform": "tiktok",
+    "video_id": "7300000000000000001",
+    "source_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001",
+    "creator_handle": "bakerylab",
+    "caption": "Making sourdough #baking #bread",
+    "hashtags": ["baking", "bread"],
+    "duration_seconds": 21.5,
+    "published_at": "2023-11-14T22:13:20+00:00",
+    "ingested_at": "2026-01-01T00:00:00+00:00",
+    "artifact_hash_or_manifest": "data/raw/7300000000000000001/manifest.json"
+  },
+  "decompilation": {
+    "schema_version": "0.1",
+    "pipeline_version": "0.1.0",
+    "model_id": "gemini-2.5-pro-preview-06-05",
+    "provider": "google",
+    "prompt_version": "creative-decompile-v0",
+    "created_at": "2026-01-02T10:00:00+00:00",
+    "annotation_mode": "automated",
+    "notes": null
+  },
+  "observed": {
+    "media_summary": "A home baker shapes a sourdough loaf, scores it, and reveals a baked loaf with an open crumb; ambient kitchen audio with a music bed.",
+    "hook_evidence": {
+      "description": "Close-up of wet dough being stretched with overlaid text 'the dough knows'",
+      "start_seconds": 0.0,
+      "end_seconds": 2.4,
+      "evidence_refs": ["ocr:shot-01", "asr:0.0-2.4"]
+    },
+    "narrative_evidence": {
+      "description": "Process montage: shaping, scoring, bake reveal.",
+      "beats_seconds": [
+        { "label": "shaping", "start_seconds": 0.0 },
+        { "label": "scoring", "start_seconds": 8.2 },
+        { "label": "bake_reveal", "start_seconds": 15.0 }
+      ]
+    },
+    "marketing_evidence": null,
+    "shots": [
+      {
+        "shot_id": "shot-01",
+        "start_seconds": 0.0,
+        "end_seconds": 8.2,
+        "subjects_and_actions": [
+          { "subject": "wet sourdough dough", "action": "being stretch-and-folded", "subject_category": "food" },
+          { "subject": "baker hands", "action": "folding dough", "subject_category": "person" }
+        ],
+        "visual_description": "Overhead close-up of dough on a wooden counter under warm light.",
+        "framing_shot_scale": "close_up",
+        "camera_movement": "static",
+        "on_screen_text": [
+          { "text": "the dough knows", "certainty": "exact", "start_seconds": 0.3, "end_seconds": 2.4, "evidence": { "kind": "deterministic", "reference": "ocr:shot-01" } }
+        ],
+        "spoken_dialogue": [],
+        "audio": [
+          { "category": "music", "label": "Loaf Anthem (uncertain title)", "certainty": "uncertain", "start_seconds": 0.0, "end_seconds": 21.5, "evidence": { "kind": "model", "reference": "audio:full" } },
+          { "category": "ambient", "label": null, "certainty": "exact", "start_seconds": 0.0, "end_seconds": 8.2, "evidence": { "kind": "model", "reference": "audio:0.0-8.2" } }
+        ],
+        "editing_transition_in": "none",
+        "evidence": [
+          { "kind": "deterministic", "reference": "timecode:0.0-8.2" },
+          { "kind": "model", "reference": "vlm:shot-01" }
+        ]
+      },
+      {
+        "shot_id": "shot-02",
+        "start_seconds": 8.2,
+        "end_seconds": 15.0,
+        "subjects_and_actions": [
+          { "subject": "boule", "action": "being scored with a blade", "subject_category": "food" }
+        ],
+        "visual_description": "Side close-up of scored dough; flour dust visible.",
+        "framing_shot_scale": "close_up",
+        "camera_movement": "handheld",
+        "on_screen_text": [
+          { "text": "score deep!!", "certainty": "uncertain", "start_seconds": 9.0, "end_seconds": 11.0, "evidence": { "kind": "model", "reference": "ocr:shot-02-lowres" } }
+        ],
+        "spoken_dialogue": [],
+        "audio": [ { "category": "music", "label": null, "certainty": "uncertain", "start_seconds": 8.2, "end_seconds": 15.0, "evidence": { "kind": "model", "reference": "audio:8.2-15.0" } } ],
+        "editing_transition_in": "cut",
+        "evidence": [ { "kind": "deterministic", "reference": "timecode:8.2-15.0" } ]
+      },
+      {
+        "shot_id": "shot-03",
+        "start_seconds": 15.0,
+        "end_seconds": 21.5,
+        "subjects_and_actions": [
+          { "subject": "baked loaf", "action": "being sliced to show crumb", "subject_category": "food" }
+        ],
+        "visual_description": "Steam rises as the loaf is cut open revealing open crumb structure.",
+        "framing_shot_scale": "medium",
+        "camera_movement": "static",
+        "on_screen_text": [],
+        "spoken_dialogue": [
+          { "text": "look at that crumb", "certainty": "uncertain", "start_seconds": 17.2, "end_seconds": 19.0, "evidence": { "kind": "model", "reference": "asr:17.2-19.0" } }
+        ],
+        "audio": [
+          { "category": "dialogue", "label": "look at that crumb", "certainty": "uncertain", "start_seconds": 17.2, "end_seconds": 19.0, "evidence": { "kind": "model", "reference": "asr:17.2-19.0" } }
+        ],
+        "editing_transition_in": "jump_cut",
+        "evidence": [ { "kind": "deterministic", "reference": "timecode:15.0-21.5" } ]
+      }
+    ]
+  },
+  "inferred": {
+    "overall_concept": {
+      "statement": "Satisfying process-to-payoff sourdough montage that rewards viewers with a crumb reveal.",
+      "confidence": "high",
+      "rationale_evidence_refs": ["timecode:0.0-21.5"]
+    },
+    "target_audience_hypothesis": {
+      "statement": "Home baking hobbyists interested in fermentation.",
+      "confidence": "medium",
+      "rationale_evidence_refs": ["ocr:shot-01", "hashtag:baking"]
+    },
+    "hook": {
+      "type": "curiosity_gap",
+      "mechanism": "Tactile dough close-up plus cryptic overlay text delays payoff of the crumb shot.",
+      "timing_seconds": 0.0,
+      "confidence": "medium",
+      "rationale_evidence_refs": ["ocr:shot-01"]
+    },
+    "narrative_structure": {
+      "structure": "before_after",
+      "confidence": "high",
+      "rationale_evidence_refs": ["timecode:15.0-21.5"]
+    },
+    "attention_mechanisms": [
+      {
+        "mechanism": "Jump cut into steamy crumb reveal sustains end-of-video retention.",
+        "category": "pacing",
+        "confidence": "high",
+        "rationale_evidence_refs": ["timecode:15.0"]
+      }
+    ],
+    "marketing_persuasion_mechanisms": [],
+    "commercial_interpretation": {
+      "status": "non_commercial",
+      "product_presence": null,
+      "first_product_appearance_seconds": null,
+      "problem_or_desire": null,
+      "promise_or_claim": null,
+      "proof_type": null,
+      "trust_signals": [],
+      "objections_addressed": [],
+      "offer": null,
+      "cta_text": null,
+      "cta_type": null,
+      "confidence": "high",
+      "rationale_evidence_refs": []
+    }
+  },
+  "generation": {
+    "global_brief": "Recreate a 21.5-second warm-lit home-kitchen sourdough montage ending on a crumb reveal; no brand elements.",
+    "timeline_pacing": [
+      { "start_seconds": 0.0, "end_seconds": 8.2, "instruction": "Slow tactile close-ups; hold calm rhythm." },
+      { "start_seconds": 15.0, "end_seconds": 21.5, "instruction": "Payoff beat: slice open loaf, steam visible." }
+    ],
+    "per_shot_intent": [
+      { "shot_id": "shot-01", "instruction": "Overhead close-up of stretch-and-fold with overlay text 'the dough knows'." },
+      { "shot_id": "shot-02", "instruction": "Handheld scoring close-up." },
+      { "shot_id": "shot-03", "instruction": "Static medium slice-reveal with rising steam." }
+    ],
+    "text_treatment": "Minimal lowercase sans-serif overlays, first two seconds only.",
+    "transition_editing_expectations": "Hard cuts; one jump cut before reveal.",
+    "continuity_constraints": [
+      "Same wooden counter and lighting across all shots.",
+      "Dough state must progress logically (raw -> scored -> baked)."
+    ],
+    "payoff_timing": { "at_seconds": 16.5, "instruction": "Crumb visible by this point." }
+  }
+}
