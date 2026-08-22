@@ -12,6 +12,11 @@ license = { text = "Proprietary" }
 dependencies = []
 
 [project.optional-dependencies]
+ingestion = [
+    "yt-dlp>=2024.4.9",
+    "requests>=2.31",
+    "pyktok>=0.0.31; python_version < '3.13'",
+]
 dev = [
     "pytest>=8",
 ]
@@ -21,3 +26,5 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: optional live-network tests (deselected by default)"]
+addopts = "-m 'not integration'"

@@ -28,3 +28,6 @@ data/datasets/
 
 # OS
 .DS_Store
+
+# Raw ingested artifacts are immutable local data, never committed.
+data/raw/
