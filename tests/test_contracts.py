@@ -108,7 +108,7 @@ def test_performance_observed_at_must_be_valid(performance_ref):
 
 def test_published_after_observed_rejected(performance_ref):
     base = dict(
-        video_id="7300000000000000001",
+        video_id="1111222233334444555",
         source_url=None,
         creator_handle=None,
         creator_id=None,
@@ -151,7 +151,10 @@ def test_invalid_annotation_mode_rejected(creative_ref):
 
 def test_non_commercial_with_details_rejected(creative_ref):
     bad = copy.deepcopy(creative_ref)
-    bad["inferred"]["commercial"]["details"] = {"product_presence": "bread"}
+    bad["inferred"]["commercial"] = {
+        "status": "non_commercial",
+        "details": {"product_presence": "bread"},
+    }
     with pytest.raises(ContractValidationError):
         validate(bad, "creative_ir_v0_1")
 
@@ -268,7 +271,72 @@ def test_projection_matches_committed_reference_example(creative_ref):
     assert project_creative_to_canonical(creative_ref) == committed
 
 
-# --- synthetic commercial fixture (reference video is non-commercial) -------
+# --- grounding on the real issue #2 reference video ------------------------
+
+REAL_VIDEO_ID = "6718335390845095173"
+REAL_URL = "https://www.tiktok.com/@scout2015/video/6718335390845095173"
+BANNED_FAKE_MARKERS = ("bakerylab", "7300000000000000001")
+
+
+def _example_files() -> list[Path]:
+    return sorted(EXAMPLES.glob("*_reference.json"))
+
+
+def test_reference_examples_use_real_video_id(creative_ref, performance_ref):
+    assert creative_ref["source"]["video_id"] == REAL_VIDEO_ID
+    assert creative_ref["source"]["source_url"] == REAL_URL
+    canonical = json.loads((EXAMPLES / "canonical_ir_v0_1_reference.json").read_text())
+    assert canonical["source"]["video_id"] == REAL_VIDEO_ID
+    assert performance_ref["video_id"] == REAL_VIDEO_ID
+    assert performance_ref["source_url"] == REAL_URL
+
+
+def test_fabricated_identifiers_banned_from_examples_and_docs():
+    searchable = [p for p in _example_files()]
+    searchable.append(REPO_ROOT / "docs" / "data_contracts.md")
+    for path in searchable:
+        text = path.read_text()
+        for marker in BANNED_FAKE_MARKERS:
+            # docs may mention the ban itself; examples must never contain it
+            if path.name.startswith("creative") or path.suffix == ".json":
+                assert marker not in text, f"{marker} found in {path}"
+    for example in EXAMPLES.glob("*.json"):
+        text = example.read_text()
+        for marker in BANNED_FAKE_MARKERS:
+            assert marker not in text, f"{marker} found in {example}"
+
+
+def test_performance_metrics_match_raw_payload(performance_ref):
+    raw = json.loads(
+        (EXAMPLES / "artifacts" / "metadata_6718335390845095173.raw.json").read_text()
+    )
+    m = performance_ref["metrics"]
+    assert m["views"] == raw["view_count"]
+    assert m["likes"] == raw["like_count"]
+    assert m["comments"] == raw["comment_count"]
+    assert m["saves"] == raw["save_count"]
+    # repost_count must NOT be asserted as shares (unverified mapping)
+    assert m["shares"] is None
+    assert performance_ref["creator_handle"] == raw["uploader"]
+    assert performance_ref["creator_id"] == raw["uploader_id"]
+
+
+def test_creative_example_claims_no_unverified_media_observations(creative_ref):
+    observed = json.dumps(creative_ref["observed"])
+    shot = creative_ref["observed"]["shots"][0]
+    assert shot["visual_description"].startswith("Not inspected")
+    assert shot["subjects"] == []
+    assert shot["actions"] == []
+    assert shot["on_screen_text"] == []
+    assert shot["spoken_dialogue"] == []
+    assert shot["audio"]["music_certainty"] == "unknown"
+    assert creative_ref["inferred"]["commercial"]["status"] == "uncertain"
+    assert creative_ref["inferred"]["commercial"]["details"] is None
+    # no model produced any claim in this record
+    assert creative_ref["decompilation"]["annotation_mode"] == "manual"
+
+
+# --- synthetic commercial fixture (reference video commerciality unknown) ----
 
 
 @pytest.fixture(scope="module")
@@ -293,7 +361,7 @@ def commercial_creative(creative_ref) -> dict:
             "cta": {"text": "link in bio", "text_exact": True, "type": "affiliate_link"},
         },
     }
-    fixture.pop("generation")
+    fixture.pop("generation", None)
     return fixture
 
 

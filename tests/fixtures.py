@@ -13,14 +13,14 @@ FAKE_MP4_B = b"\x00\x00\x00\x18ftypmp42fake-tiktok-video-payload-B" * 4
 
 FIXTURE_PAYLOAD = {
     "desc": "Making sourdough #baking #bread",
-    "author": {"unique_id": "bakerylab", "uid": "700123456"},
+    "author": {"unique_id": "testcreator", "uid": "700123456"},
     "stats": {"play_count": 15234, "digg_count": 812, "comment_count": 43, "share_count": 7},
-    "video": {"duration": 21.5, "id": "7300000000000000001"},
+    "video": {"duration": 21.5, "id": "1111222233334444555"},
     "music": {"title": "Loaf Anthem", "author": "DJ Yeast"},
     "create_time": 1700000000,
 }
 
-URL = "https://www.tiktok.com/@bakerylab/video/7300000000000000001"
+URL = "https://www.tiktok.com/@testcreator/video/1111222233334444555"
 
 
 FAKE_MP4 = FAKE_MP4_A
@@ -48,7 +48,7 @@ class FakeCollector:
             collected_at="2026-01-01T00:00:00+00:00",
             raw_payload=self.payload,
             mp4_bytes=self.mp4,
-            creator_handle_hint="bakerylab",
+            creator_handle_hint="testcreator",
         )
 
 

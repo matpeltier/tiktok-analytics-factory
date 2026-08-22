@@ -12,11 +12,36 @@ project against them.
 | Performance v0.1 | `schemas/performance_v0_1.json` | Raw observed platform metric snapshots |
 
 Reference examples live in `examples/*_reference.json`. They are grounded in
-the issue #2 reference ingestion (`@bakerylab` sourdough video,
-`7300000000000000001`), which is **non-commercial**. The commercial branch of
-CreativeIR is exercised by a synthetic fixture in
-`tests/test_contracts.py::test_synthetic_commercial_branch_projects`; we do
-not pretend the reference video is commercial.
+the real issue #2 reference video, TikTok
+[`6718335390845095173`](https://www.tiktok.com/@scout2015/video/6718335390845095173)
+by `@scout2015` (published 2019-07-27T13:32:38Z). The raw collector payload
+backing every factual value is preserved at
+`examples/artifacts/metadata_6718335390845095173.raw.json`.
+
+**Grounding rules for the reference examples (enforced by tests):**
+
+- Only deterministic metadata facts are asserted: video ID, source URL,
+  creator handle/ID, caption/hashtags, duration, published_at, and the public
+  metric counters present in the raw payload (`view_count`, `like_count`,
+  `comment_count`, `save_count`).
+- Media frames and audio were **not inspected** when the CreativeIR example was
+  authored, so all visual/audio observations are `null`, `[]`, or
+  `"unknown"`; nothing about shots, text, dialogue, or music is invented.
+- `shares` in Performance is `null`: the payload exposes `repost_count=1465`,
+  but a repost→share mapping is unverified, so it is not asserted.
+- `follower_count_at_observation` is `null` (absent from the payload).
+- The CreativeIR example omits the optional `generation` block because no
+  reconstruction instructions can be grounded without media inspection.
+- `decompilation` uses `annotation_mode: "manual"` with
+  `model_id`/`provider`/`prompt_version` set to the documented literal
+  `"none"`, meaning no model produced any claim in this record.
+- Commercial status is `"uncertain"` (details `null`) since commerciality
+  cannot be verified without inspecting the media. The commercial branch of
+  CreativeIR is exercised by a clearly-synthetic fixture in
+  `tests/test_contracts.py::test_synthetic_commercial_branch_projects`; we do
+  not pretend the reference video is commercial.
+- Regression tests ban the previously fabricated identifiers
+  `@bakerylab` / `7300000000000000001` from all reference examples and docs.
 
 ## Global conventions
 

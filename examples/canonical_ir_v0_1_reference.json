@@ -5,56 +5,40 @@
   },
   "source": {
     "platform": "tiktok",
-    "video_id": "7300000000000000001",
-    "source_url": "https://www.tiktok.com/@bakerylab/video/7300000000000000001"
+    "video_id": "6718335390845095173",
+    "source_url": "https://www.tiktok.com/@scout2015/video/6718335390845095173"
   },
   "decompilation_ref": {
     "pipeline_version": "0.0.0-dev",
-    "prompt_version": "decompile_v1",
-    "annotation_mode": "automated"
+    "prompt_version": "none",
+    "annotation_mode": "manual"
   },
   "features": {
-    "hook_present": true,
-    "hook_type": "visual_shock",
-    "hook_end_seconds": 2.5,
-    "shot_count": 3,
-    "shot_duration_min_seconds": 6.5,
-    "shot_duration_max_seconds": 8.0,
-    "shot_duration_mean_seconds": 7.166666666666667,
+    "hook_present": null,
+    "hook_type": "unknown",
+    "hook_end_seconds": null,
+    "shot_count": 1,
+    "shot_duration_min_seconds": 10.0,
+    "shot_duration_max_seconds": 10.0,
+    "shot_duration_mean_seconds": 10.0,
     "subject_categories": [
-      "food",
-      "person_creator",
-      "environment"
+      "none_visible"
     ],
-    "commercial_status": "non_commercial",
-    "product_present": false,
+    "commercial_status": "uncertain",
+    "product_present": null,
     "first_product_appearance_seconds": null,
-    "visible_text_present": true,
-    "visible_text_roles": [
-      "instructional"
-    ],
+    "visible_text_present": false,
+    "visible_text_roles": [],
     "spoken_dialogue_present": false,
-    "camera_motion_categories": [
-      "static"
-    ],
-    "transition_categories": [
-      "none_single_shot",
-      "jump_cut",
-      "cut"
-    ],
-    "music_present": true,
-    "sfx_present": true,
-    "narrative_structure": "tutorial_steps",
-    "attention_mechanism_labels": [
-      "end_payoff_reveal",
-      "macro_food_visuals",
-      "text_overlay_wayfinding"
-    ],
-    "cta_type": "not_applicable",
+    "camera_motion_categories": [],
+    "transition_categories": [],
+    "music_present": null,
+    "sfx_present": null,
+    "narrative_structure": "unknown",
+    "attention_mechanism_labels": [],
+    "cta_type": null,
     "proof_labels": [],
     "trust_labels": [],
-    "persuasion_labels": [
-      "process_transparency_builds_trust"
-    ]
+    "persuasion_labels": []
   }
 }
