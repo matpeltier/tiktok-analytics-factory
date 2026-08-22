@@ -1,0 +1,496 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/matpeltier/tiktok-analytics-factory/schemas/creative_ir_v0_1.json",
+  "title": "CreativeIR v0.1",
+  "description": "Rich, auditable creative decompilation of one short-form video. Separates source, decompilation provenance, observed claims, inferred interpretation, and model-agnostic generation instructions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source", "decompilation", "observed", "inferred"],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "creative_ir" },
+        "version": { "const": "0.1" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "video_id", "source_url"],
+      "description": "Normalized reference to the ingested source. Does not duplicate the full raw metadata payload.",
+      "properties": {
+        "platform": { "const": "tiktok" },
+        "video_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": "string", "format": "uri" },
+        "creator_handle": { "type": ["string", "null"] },
+        "caption": { "type": ["string", "null"] },
+        "hashtags": { "type": "array", "items": { "type": "string" } },
+        "duration_seconds": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0,
+          "description": "Source media duration in seconds."
+        },
+        "published_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO-8601 UTC when derivable; null means unknown."
+        },
+        "artifact_sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the raw media artifact; null if not computed."
+        },
+        "manifest_reference": {
+          "type": ["string", "null"],
+          "description": "Path or URI of the ingestion manifest carrying full provenance."
+        }
+      }
+    },
+    "decompilation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "pipeline_version",
+        "model_id",
+        "provider",
+        "prompt_version",
+        "created_at",
+        "annotation_mode"
+      ],
+      "description": "Provenance of the decompilation run itself.",
+      "properties": {
+        "schema_version": { "const": "0.1" },
+        "pipeline_version": { "type": "string", "minLength": 1 },
+        "model_id": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "prompt_version": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "annotation_mode": {
+          "enum": ["automated", "manual", "hybrid"]
+        }
+      }
+    },
+    "observed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "shots"],
+      "description": "Claims grounded in source evidence (visible/audible content). Unknown facts are null, never fabricated.",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Media/context summary grounded only in visible/audible content."
+        },
+        "hook": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["evidence"],
+          "properties": {
+            "description": {
+              "type": ["string", "null"],
+              "description": "What literally happens first on screen/audio; null if uncertain."
+            },
+            "start_seconds": {
+              "type": ["number", "null"],
+              "minimum": 0
+            },
+            "end_seconds": {
+              "type": ["number", "null"],
+              "minimum": 0
+            },
+            "evidence": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/evidence_ref" },
+              "minItems": 1
+            }
+          }
+        },
+        "narrative_evidence": {
+          "type": ["string", "null"],
+          "description": "Observed narrative beats in order, as facts only. Null when no narrative is observable."
+        },
+        "marketing_evidence": {
+          "type": ["string", "null"],
+          "description": "Observed commercial markers (product shown, spoken brand name, on-screen CTA text). Null when none observed."
+        },
+        "first_product_appearance_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Seconds into media where a product first appears; null when no product appears or timing unknown."
+        },
+        "shots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/shot" },
+          "minItems": 1
+        }
+      }
+    },
+    "inferred": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commercial"],
+      "description": "Interpretation rather than observed fact. Every interpretive field carries a confidence and optional rationale/evidence references.",
+      "properties": {
+        "concept": { "$ref": "#/$defs/labeled" },
+        "target_audience_hypothesis": { "$ref": "#/$defs/labeled" },
+        "hook_type": {
+          "$ref": "#/$defs/labeled_enum_or_unknown",
+          "description": "Closed enum hook category hypothesis."
+        },
+        "hook_mechanism": { "$ref": "#/$defs/labeled_free" },
+        "narrative_structure": {
+          "$ref": "#/$defs/labeled_narrative_enum"
+        },
+        "attention_mechanisms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/labeled_free" }
+        },
+        "persuasion_mechanisms": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/labeled_free" }
+        },
+        "commercial": { "$ref": "#/$defs/commercial_analysis" }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["global_brief", "shots"],
+      "description": "Model-agnostic reconstruction instructions. Allowed ONLY in full CreativeIR; must never contain vendor-specific prompt syntax.",
+      "properties": {
+        "global_brief": { "type": "string", "minLength": 1 },
+        "timeline_pacing": {
+          "type": ["string", "null"],
+          "description": "Pacing/rhythm requirements relative to seconds from media start."
+        },
+        "text_treatment": { "type": ["string", "null"] },
+        "transitions": { "type": ["string", "null"] },
+        "continuity_constraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "payoff_timing": {
+          "type": ["string", "null"],
+          "description": "When the payoff/reveal should land, in seconds from media start."
+        },
+        "shots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["shot_id", "reconstruction_intent"],
+            "properties": {
+              "shot_id": { "type": "string" },
+              "reconstruction_intent": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "evidence_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "description": "Distinguishes deterministic facts (probe/metadata) from model observations.",
+      "properties": {
+        "kind": {
+          "enum": ["deterministic", "model_observation"]
+        },
+        "reference": {
+          "type": "string",
+          "description": "Shot ID, timestamp range, metadata field, or artifact pointer backing the claim."
+        }
+      }
+    },
+    "labeled": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "confidence"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "rationale": { "type": ["string", "null"] },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence_ref" }
+        }
+      }
+    },
+    "labeled_free": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "confidence"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "rationale": { "type": ["string", "null"] }
+      }
+    },
+    "labeled_enum_or_unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "confidence"],
+      "properties": {
+        "value": {
+          "anyOf": [
+            { "enum": ["unknown"] },
+            { "$ref": "#/$defs/hook_type_enum" }
+          ]
+        },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "rationale": { "type": ["string", "null"] }
+      }
+    },
+    "labeled_narrative_enum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "confidence"],
+      "properties": {
+        "value": {
+          "anyOf": [
+            { "enum": ["unknown"] },
+            { "$ref": "#/$defs/narrative_structure_enum" }
+          ]
+        },
+        "confidence": { "enum": ["high", "medium", "low"] },
+        "rationale": { "type": ["string", "null"] }
+      }
+    },
+    "hook_type_enum": {
+      "enum": [
+        "question",
+        "bold_claim",
+        "curiosity_gap",
+        "visual_shock",
+        "direct_address",
+        "problem_statement",
+        "before_after_tease",
+        "social_proof_open",
+        "other"
+      ]
+    },
+    "narrative_structure_enum": {
+      "enum": [
+        "problem_solution",
+        "before_after",
+        "tutorial_steps",
+        "storytime",
+        "listicle",
+        "single_beat_no_narrative",
+        "other"
+      ]
+    },
+    "shot_scale_enum": {
+      "enum": ["extreme_close_up", "close_up", "medium", "wide", "extreme_wide"]
+    },
+    "camera_movement_enum": {
+      "enum": ["static", "handheld", "pan", "tilt", "zoom_in", "zoom_out", "tracking"]
+    },
+    "transition_enum": {
+      "enum": ["cut", "jump_cut", "whip_pan", "match_cut", "fade", "wipe", "none_single_shot"]
+    },
+    "commercial_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "description": "Supports both commercial and non-commercial videos. When status is non_commercial, details must be null (explicit not_applicable). When status is commercial, details must be a full commercial_details object. When uncertain, details may be null or partial.",
+      "properties": {
+        "status": {
+          "enum": ["commercial", "non_commercial", "uncertain"]
+        },
+        "details": {
+          "anyOf": [
+            { "$ref": "#/$defs/commercial_details" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "non_commercial" } } },
+          "then": { "properties": { "details": { "const": null } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "commercial" } } },
+          "then": { "required": ["details"] }
+        }
+      ]
+    },
+    "commercial_details": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_presence"],
+      "properties": {
+        "product_presence": {
+          "type": ["string", "null"],
+          "description": "What the product/offer is as shown in the video; null if not identifiable."
+        },
+        "first_product_appearance_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "problem_desire": { "type": ["string", "null"] },
+        "promise_claim": { "type": ["string", "null"] },
+        "proof_type": {
+          "anyOf": [
+            { "enum": [null, "unknown"] },
+            { "enum": ["demonstration", "before_after", "testimonial", "credentials", "data_stats", "social_proof"] }
+          ],
+          "description": "How proof is delivered; unknown when unclear."
+        },
+        "trust_signals": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "objections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Objections addressed by the video."
+        },
+        "offer": {
+          "type": ["string", "null"],
+          "description": "Discount/link/bundle mechanics if expressed."
+        },
+        "cta": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["text", "type"],
+          "properties": {
+            "text": {
+              "type": ["string", "null"],
+              "description": "Literal CTA text; null if inferred without exact wording."
+            },
+            "text_exact": { "type": ["boolean", "null"] },
+            "type": {
+              "enum": [
+                "link_in_bio",
+                "follow",
+                "comment",
+                "share",
+                "save",
+                "shop_now",
+                "affiliate_link",
+                "other"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "shot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shot_id",
+        "start_seconds",
+        "end_seconds",
+        "visual_description",
+        "evidence"
+      ],
+      "properties": {
+        "shot_id": {
+          "type": "string",
+          "pattern": "^shot_[0-9]{3,}$",
+          "description": "Stable ID, zero-padded, ordered by start time."
+        },
+        "start_seconds": { "type": "number", "minimum": 0 },
+        "end_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "subjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Visible subjects; empty array when none visible."
+        },
+        "actions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Visible actions; empty array when none observable."
+        },
+        "visual_description": { "type": "string", "minLength": 1 },
+        "framing": {
+          "anyOf": [
+            { "enum": ["unknown"] },
+            { "$ref": "#/$defs/shot_scale_enum" }
+          ]
+        },
+        "camera_movement": {
+          "anyOf": [
+            { "enum": ["unknown"] },
+            { "$ref": "#/$defs/camera_movement_enum" },
+            { "type": "null" }
+          ],
+          "description": "unknown = cannot be determined from evidence; null = not applicable."
+        },
+        "on_screen_text": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["text", "exact"],
+            "properties": {
+              "text": { "type": "string", "minLength": 1 },
+              "exact": {
+                "type": "boolean",
+                "description": "true only when text is legible verbatim; false means paraphrase/approximate."
+              }
+            }
+          }
+        },
+        "spoken_dialogue": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["text", "exact"],
+            "properties": {
+              "speaker": { "type": ["string", "null"] },
+              "text": { "type": "string", "minLength": 1 },
+              "exact": {
+                "type": "boolean",
+                "description": "true only for verbatim transcription."
+              }
+            }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "music": {
+              "type": ["string", "null"],
+              "description": "Music observation; null = none heard or unknown, see music_certainty."
+            },
+            "music_certainty": { "enum": ["observed", "uncertain", "absent", "unknown"] },
+            "sfx": {
+              "type": ["string", "null"],
+              "description": "Sound effects; semantics mirror music."
+            },
+            "sfx_certainty": { "enum": ["observed", "uncertain", "absent", "unknown"] },
+            "ambience": {
+              "type": ["string", "null"],
+              "description": "Ambient sound; semantics mirror music."
+            },
+            "ambience_certainty": { "enum": ["observed", "uncertain", "absent", "unknown"] }
+          }
+        },
+        "transition_in": {
+          "anyOf": [
+            { "enum": ["unknown"] },
+            { "$ref": "#/$defs/transition_enum" }
+          ],
+          "description": "How this shot begins relative to the previous one."
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence_ref" },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

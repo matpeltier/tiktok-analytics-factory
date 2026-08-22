@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/matpeltier/tiktok-analytics-factory/schemas/performance_v0_1.json",
+  "title": "Performance v0.1",
+  "description": "Raw observed platform metrics snapshot for one video at one observation time. Normalized labels, residual targets, virality scores, and ranker outputs are deliberately excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "platform",
+    "video_id",
+    "observed_at",
+    "metrics",
+    "collector"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "performance" },
+        "version": { "const": "0.1" }
+      }
+    },
+    "platform": { "const": "tiktok" },
+    "video_id": { "type": "string", "minLength": 1 },
+    "source_url": { "type": ["string", "null"], "format": "uri" },
+    "creator_handle": { "type": ["string", "null"] },
+    "creator_id": { "type": ["string", "null"] },
+    "published_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO-8601 UTC; null when not derivable."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC moment the snapshot was taken."
+    },
+    "age_since_publish_seconds": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "observed_at - published_at in seconds; null when published_at is null. Must be derivable when both timestamps are present."
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Raw counters. null = unknown/not exposed by the platform. 0 always means observed zero, never unknown. Values must be non-negative integers.",
+      "required": ["views", "likes", "comments", "shares"],
+      "properties": {
+        "views": { "type": ["integer", "null"], "minimum": 0 },
+        "likes": { "type": ["integer", "null"], "minimum": 0 },
+        "comments": { "type": ["integer", "null"], "minimum": 0 },
+        "shares": { "type": ["integer", "null"], "minimum": 0 },
+        "saves": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Include only when truly available from the platform payload; otherwise null."
+        }
+      }
+    },
+    "follower_count_at_observation": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Creator follower count if publicly available at observation time; null otherwise."
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "collected_at"],
+      "description": "Provenance needed to audit this snapshot.",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] },
+        "method": {
+          "type": ["string", "null"],
+          "description": "How metrics were obtained (e.g. metadata endpoint, page scrape)."
+        },
+        "collected_at": { "type": "string", "format": "date-time" },
+        "raw_payload_reference": {
+          "type": ["string", "null"],
+          "description": "Path/URI to the immutable raw collector payload backing this snapshot."
+        }
+      }
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Free-text audit notes; never used for derived labels."
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "If both timestamps are present, age must be consistent (within 1s tolerance).",
+      "if": {
+        "properties": {
+          "published_at": { "type": "string" },
+          "age_since_publish_seconds": { "type": "number" }
+        },
+        "required": ["published_at", "age_since_publish_seconds"]
+      },
+      "then": { "properties": { "age_since_publish_seconds": { "type": "number" } } }
+    }
+  ]
+}
