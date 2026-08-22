@@ -315,3 +315,18 @@ def test_uncertain_commercial_keeps_null_semantics(commercial_creative):
     f = project_creative_to_canonical(fixture)["features"]
     assert f["product_present"] is None
     assert f["cta_type"] is None
+
+
+def test_single_public_projection_entrypoint_produces_valid_canonical(creative_ref):
+    import tiktok_analytics_factory.contracts as contracts_mod
+
+    entrypoints = [
+        name
+        for name in dir(contracts_mod)
+        if "project" in name.lower()
+        and callable(getattr(contracts_mod, name))
+        and not name.startswith("_")
+    ]
+    assert entrypoints == ["project_creative_to_canonical"]
+    out = contracts_mod.project_creative_to_canonical(creative_ref)
+    validate(out, "canonical_ir_v0_1")

@@ -89,17 +89,5 @@
       "description": "Free-text audit notes; never used for derived labels."
     }
   },
-  "allOf": [
-    {
-      "$comment": "If both timestamps are present, age must be consistent (within 1s tolerance).",
-      "if": {
-        "properties": {
-          "published_at": { "type": "string" },
-          "age_since_publish_seconds": { "type": "number" }
-        },
-        "required": ["published_at", "age_since_publish_seconds"]
-      },
-      "then": { "properties": { "age_since_publish_seconds": { "type": "number" } } }
-    }
-  ]
+  "$comment": "Cross-field consistency (age_since_publish_seconds vs published_at/observed_at, within 1s tolerance) is enforced by semantic validation in code; JSON Schema cannot express timestamp arithmetic."
 }

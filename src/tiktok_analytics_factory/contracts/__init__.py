@@ -259,7 +259,7 @@ def project_creative_to_canonical(creative_ir: dict[str, Any]) -> dict[str, Any]
             "commercial_status": commercial_status,
             "product_present": product_present,
             "first_product_appearance_seconds": first_product_seconds,
-            "visible_text_present": bool(visible_text) if visible_text else False,
+            "visible_text_present": bool(visible_text),
             "visible_text_roles": roles,
             "spoken_dialogue_present": bool(spoken),
             "camera_motion_categories": camera_motions,
