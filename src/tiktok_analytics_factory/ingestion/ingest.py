@@ -225,7 +225,7 @@ def ingest(
         "artifacts": manifest_artifacts,
         "sha256": file_hash,
         "byte_size": size,
-        "mp4_reused_from_previous_run": False,
+        "mp4_reused_from_previous_run": mp4_was_reused,
         "collected_at": collected_at,
         "collector_name": result.collector_name,
         "collector_version": _collector_version(result),

@@ -249,3 +249,12 @@ def test_force_new_observation_writes_versioned_manifest_snapshot(tmp_path):
 def test_fresh_run_reports_reused_false(tmp_path):
     res = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
     assert res.manifest["mp4_reused_from_previous_run"] is False
+
+def test_partial_artifacts_repair_reports_reused_true(tmp_path):
+    first = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    (first.artifact_dir / "metadata.raw.json").unlink()
+    (first.artifact_dir / "metadata.normalized.json").unlink()
+    (first.artifact_dir / "manifest.json").unlink()
+    second = _ingest_with(tmp_path, [StubCollector], "https://www.tiktok.com/@x/video/7300000000000000001")
+    assert second.reused_existing_mp4 is False
+    assert second.manifest["mp4_reused_from_previous_run"] is True
