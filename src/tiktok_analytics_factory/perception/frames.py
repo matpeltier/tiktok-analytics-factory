@@ -1,4 +1,4 @@
-"""Deterministic representative-frame extraction via ffmpeg."""
+"""Deterministic representative-frame extraction per shot."""
 
 from __future__ import annotations
 
@@ -6,81 +6,87 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .errors import FrameExtractionError
-from .models import FrameArtifact, Shot, ShotDetectionResult
+from .errors import FFprobeUnavailableError, FrameExtractionError
+from .models import FrameArtifact, Shot
 
-# Deterministic fallback offsets (seconds before the midpoint) tried in order
-# when the midpoint frame cannot be decoded.
-_FALLBACK_OFFSETS = (0.0, 0.1, 0.5)
+
+def _ffmpeg_binary() -> str:
+    binary = shutil.which("ffmpeg")
+    if binary is None:
+        raise FFprobeUnavailableError("ffmpeg executable not found on PATH")
+    return binary
+
+
+def _frame_index_for_timestamp(shot: Shot, fps: float) -> int:
+    midpoint = (shot.start_seconds + shot.end_seconds) / 2.0
+    return max(shot.start_frame, min(shot.end_frame - 1,
+                                     int(round(midpoint * fps))))
+
+
+def representative_timestamp(shot: Shot) -> float:
+    """Deterministic timestamp: temporal midpoint of the shot."""
+    return round((shot.start_seconds + shot.end_seconds) / 2.0, 6)
 
 
 def extract_representative_frames(
     video_path: str | Path,
-    shots: ShotDetectionResult | list[Shot],
+    shots: list[Shot],
     output_dir: str | Path,
+    fps: float | None = None,
+    quality: int = 2,
 ) -> list[FrameArtifact]:
-    """Extract one JPEG frame per shot at the temporal midpoint.
+    """Extract one JPEG per shot at its temporal midpoint.
 
-    Filenames are stable and derived from shot IDs: ``shot_001.jpg``.
-    If the midpoint frame cannot be decoded, earlier deterministic timestamps
-    are tried; if all fail, :class:`FrameExtractionError` is raised.
+    If the exact midpoint frame cannot be decoded, extraction is retried at
+    progressively earlier timestamps within the shot before failing loudly.
     """
-    if shutil.which("ffmpeg") is None:
-        raise FrameExtractionError("ffmpeg binary not found on PATH")
-
-    shot_list = (
-        [s for s in shots.shots] if isinstance(shots, ShotDetectionResult) else list(shots)
-    )
+    path = Path(video_path)
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    src = str(video_path)
+    binary = _ffmpeg_binary()
 
     artifacts: list[FrameArtifact] = []
-    for shot in shot_list:
-        midpoint = (shot.start_seconds + shot.end_seconds) / 2.0
-        last_error: Exception | None = None
-        extracted_path: Path | None = None
-        chosen_ts = midpoint
-
-        for offset in _FALLBACK_OFFSETS:
-            ts = round(shot.start_seconds + max(0.0, (shot.end_seconds - shot.start_seconds) / 2.0 - offset), 6)
-            target = out_dir / f"{shot.shot_id}.jpg"
-            cmd = [
-                "ffmpeg",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-ss",
-                f"{ts:.6f}",
-                "-i",
-                src,
-                "-frames:v",
-                "1",
-                "-q:v",
-                "2",
+    for shot in shots:
+        ts = representative_timestamp(shot)
+        out_path = out_dir / f"{shot.shot_id}.jpg"
+        frame_index = (
+            _frame_index_for_timestamp(shot, fps)
+            if fps is not None and fps > 0
+            else 0
+        )
+        extracted = False
+        last_err = ""
+        # Deterministic retry ladder: midpoint, then earlier offsets inside shot.
+        span = max(shot.end_seconds - shot.start_seconds, 0.04)
+        for frac in (0.5, 0.4, 0.25, 0.1):
+            candidate = round(shot.start_seconds + span * frac, 6)
+            command = [
+                binary,
+                "-v", "error",
+                "-ss", f"{candidate:.6f}",
+                "-i", str(path),
+                "-frames:v", "1",
+                "-q:v", str(quality),
                 "-y",
-                str(target),
+                str(out_path),
             ]
-            proc = subprocess.run(cmd, capture_output=True, text=True)
-            if proc.returncode == 0 and target.exists() and target.stat().st_size > 0:
-                extracted_path = target
-                chosen_ts = ts
+            proc = subprocess.run(command, capture_output=True, text=True, timeout=60)
+            if proc.returncode == 0 and out_path.is_file() and out_path.stat().st_size > 0:
+                extracted = True
+                ts = candidate
                 break
-            if target.exists():
-                target.unlink()
-            last_error = FrameExtractionError(
-                f"ffmpeg failed for {shot.shot_id} at {ts:.3f}s: {proc.stderr.strip()}"
-            )
-
-        if extracted_path is None:
+            last_err = proc.stderr.strip()
+        if not extracted:
             raise FrameExtractionError(
-                f"could not decode any representative frame for {shot.shot_id}: {last_error}"
+                f"failed to extract a representative frame for {shot.shot_id} "
+                f"from {path}: {last_err}"
             )
         artifacts.append(
             FrameArtifact(
                 shot_id=shot.shot_id,
-                path=str(extracted_path),
-                timestamp_seconds=chosen_ts,
+                path=str(out_path),
+                timestamp_seconds=ts,
+                frame_index=frame_index,
             )
         )
     return artifacts

@@ -1,131 +1,119 @@
-"""Deterministic hard-cut shot detection using PySceneDetect."""
+"""Deterministic hard-cut/scene boundary detection via PySceneDetect."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from .errors import SceneDetectorUnavailableError
-from .models import PerceptionConfig, Shot, ShotDetectionResult
-from .probe import probe_media
+from .errors import (
+    MediaFileNotFoundError,
+    SceneDetectorUnavailableError,
+    UnreadableMediaError,
+)
+from .models import DetectorConfig, Shot, ShotDetectionResult
 
-DETECTOR_NAME = "ContentDetector"
+DETECTOR_NAME = "PySceneDetect.ContentDetector"
 
-try:  # pragma: no cover - trivial version capture
-    import scenedetect
 
-    _SCENEDETECT_VERSION = scenedetect.__version__
-except ImportError:
-    scenedetect = None
-    _SCENEDETECT_VERSION = None
+def _detector_version() -> str:
+    try:
+        import scenedetect
+    except ImportError as exc:
+        raise SceneDetectorUnavailableError(
+            "scenedetect is not installed; install it to run shot detection"
+        ) from exc
+    return getattr(scenedetect, "__version__", "unknown")
 
 
 def detect_shots(
     video_path: str | Path,
-    config: PerceptionConfig | None = None,
+    config: DetectorConfig | None = None,
+    media_facts=None,
 ) -> ShotDetectionResult:
-    """Detect hard visual cuts and return ordered, non-overlapping shots.
+    """Detect hard cuts with ContentDetector.
 
-    Guarantees:
-    - first shot starts at 0.0;
-    - last shot ends at the probed media duration (frame rounding absorbed);
-    - a video with no detected cuts yields exactly one full-length shot;
-    - timestamps are ordered and non-overlapping.
+    ``media_facts`` may be passed (a :class:`MediaFacts`) to avoid re-probing.
     """
-    if scenedetect is None or _SCENEDETECT_VERSION is None:
-        raise SceneDetectorUnavailableError(
-            "PySceneDetect is not installed; pip install scenedetect"
-        )
-    cfg = config or PerceptionConfig()
-    if cfg.detector != DETECTOR_NAME:
-        raise SceneDetectorUnavailableError(
-            f"unsupported detector {cfg.detector!r}; only {DETECTOR_NAME!r} is implemented"
-        )
+    path = Path(video_path)
+    if not path.is_file():
+        raise MediaFileNotFoundError(f"media file does not exist: {path}")
+    config = config or DetectorConfig()
 
-    from scenedetect import ContentDetector, SceneManager, open_video
+    try:
+        import scenedetect
+        from scenedetect.detectors import ContentDetector
+    except ImportError as exc:
+        raise SceneDetectorUnavailableError(str(exc)) from exc
 
-    facts = probe_media(video_path)
-    duration = facts.duration_seconds
-    fps = facts.fps if facts.fps > 0 else 30.0
+    version = _detector_version()
+    try:
+        video = scenedetect.open_video(str(path))
+    except Exception as exc:  # scenedetect raises assorted errors on corrupt input
+        raise UnreadableMediaError(f"cannot open {path} for scene detection: {exc}") from exc
 
-    video = open_video(str(video_path))
-    scene_manager = SceneManager()
-    scene_manager.add_detector(
-        ContentDetector(
-            threshold=cfg.threshold, min_scene_len=cfg.min_scene_len_frames
-        )
-    )
-    if cfg.downscale_factor:
-        scene_manager.downscale_factor = cfg.downscale_factor
-    scene_manager.detect_scenes(video)
+    detector_kwargs: dict = {"threshold": config.threshold}
+    if hasattr(ContentDetector, "__init__") and "min_scene_len" in (
+        ContentDetector.__init__.__doc__ or ""
+    ):
+        pass  # min_scene_len handled below via frame_size for compat
+    if config.min_scene_len_frames is not None:
+        detector_kwargs["min_scene_len"] = config.min_scene_len_frames
 
-    cuts_seconds: list[float] = []
-    for start, _end in scene_manager.get_scene_list():
-        # The boundary time is the start of the *next* scene.
-        cut = start.seconds
-        cuts_seconds.append(round(cut, 6))
+    scene_manager = scenedetect.SceneManager()
+    scene_manager.add_detector(ContentDetector(**detector_kwargs))
+    try:
+        video_fps = video.frame_rate
+        scene_manager.detect_scenes(video)
+        scene_list = scene_manager.get_scene_list()
+    except Exception as exc:
+        raise UnreadableMediaError(f"scene detection failed on {path}: {exc}") from exc
 
-    shots = _build_shots(cuts_seconds, duration, fps)
-    return ShotDetectionResult(
-        detector=DETECTOR_NAME,
-        detector_version=_SCENEDETECT_VERSION,
-        parameters={
-            "threshold": cfg.threshold,
-            "min_scene_len_frames": cfg.min_scene_len_frames,
-            "downscale_factor": cfg.downscale_factor,
-        },
-        shots=shots,
-        duration_seconds=duration,
-    )
+    fps = video_fps or (media_facts.fps if media_facts else None) or 30.0
+    duration = media_facts.duration_seconds if media_facts else None
 
-
-def _build_shots(
-    cuts_seconds: list[float], duration: float, fps: float
-) -> list[Shot]:
-    """Turn sorted cut times into validated shots."""
-    cuts = sorted(c for c in cuts_seconds if 0.0 < c < duration - 1e-9)
-
-    boundaries = [0.0, *cuts, duration]
     shots: list[Shot] = []
-    for i in range(len(boundaries) - 1):
-        start_s = boundaries[i]
-        end_s = boundaries[i + 1]
-        start_f = round(start_s * fps)
-        end_f = round(end_s * fps)
-        if i == len(boundaries) - 2:
-            end_f = max(end_f, round(duration * fps))
-        if end_s - start_s <= 0:
-            continue  # degenerate after clamping; skip silently-empty sliver
+    for i, (start, end) in enumerate(scene_list, start=1):
+        start_s = getattr(start, "seconds", None)
+        if start_s is None:
+            start_s = start.get_seconds()
+        end_s = getattr(end, "seconds", None)
+        if end_s is None:
+            end_s = end.get_seconds()
+        start_f = getattr(start, "frame_num", None)
+        if start_f is None:
+            start_f = start.get_frames()
+        end_f = getattr(end, "frame_num", None)
+        if end_f is None:
+            end_f = end.get_frames()
         shots.append(
             Shot(
-                shot_id=f"shot_{len(shots) + 1:03d}",
+                shot_id=f"shot_{i:03d}",
                 start_seconds=round(start_s, 6),
                 end_seconds=round(end_s, 6),
                 start_frame=start_f,
                 end_frame=end_f,
             )
         )
+
+    # No cut detected -> one shot spanning the whole video.
     if not shots:
-        # No cut detected / degenerate boundaries: one shot spanning the video.
-        shots.append(
-            Shot(
-                shot_id="shot_001",
-                start_seconds=0.0,
-                end_seconds=duration,
-                start_frame=0,
-                end_frame=round(duration * fps),
-            )
-        )
-    return shots
+        total = duration
+        total_frames = int(round((total or 0) * fps)) if total is not None else 0
+        shots = [
+            Shot(shot_id="shot_001", start_seconds=0.0,
+                 end_seconds=round(total, 6) if total is not None else 0.0,
+                 start_frame=0, end_frame=total_frames)
+        ]
+    else:
+        # First shot must begin at zero.
+        shots[0].start_seconds = 0.0
+        shots[0].start_frame = 0
+        # Last shot must terminate at the probed duration when known.
+        if duration is not None and abs(shots[-1].end_seconds - duration) > 0.5 / fps:
+            shots[-1].end_seconds = round(duration, 6)
 
-
-def validate_shots(shots: list[Shot]) -> None:
-    """Assert ordering/non-overlap invariants; raises ValueError otherwise."""
-    prev_end = -1.0
-    prev_id = ""
-    for s in shots:
-        assert s.start_seconds >= prev_end - 1e-9, (
-            f"{s.shot_id} overlaps {prev_id}"
-        )
-        assert s.end_seconds > s.start_seconds, f"{s.shot_id} has empty span"
-        prev_end, prev_id = s.end_seconds, s.shot_id
+    return ShotDetectionResult(
+        detector=DETECTOR_NAME,
+        detector_version=version,
+        parameters=config.to_parameters(),
+        shots=shots,
+    )

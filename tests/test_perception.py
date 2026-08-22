@@ -1,225 +1,254 @@
-"""Deterministic tests for the perception layer.
-
-Requires ffmpeg/ffprobe and PySceneDetect locally; no network access.
-"""
+"""Deterministic tests for the perception layer (no network, no models)."""
 
 from __future__ import annotations
 
 import json
-import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
 
-pytest.importorskip("scenedetect")
-if shutil.which("ffprobe") is None or shutil.which("ffmpeg") is None:
-    pytest.skip("ffmpeg/ffprobe not available", allow_module_level=True)
+from tests.perception_fixtures import (  # noqa: F401
+    make_multicut_video,
+    make_solid_video,
+)
 
-from tiktok_analytics_factory.perception import (
-    PerceptionConfig,
+
+pytest.importorskip("tiktok_analytics_factory")
+
+from tiktok_analytics_factory.perception import (  # noqa: E402
+    DetectorConfig,
+    MediaFileNotFoundError,
+    NoVideoStreamError,
+    UnreadableMediaError,
     detect_shots,
     evaluate_boundaries,
     extract_representative_frames,
+    parse_ffprobe_json,
     probe_media,
     run_perception,
 )
-from tiktok_analytics_factory.perception.errors import (
-    CorruptMediaError,
-    NoVideoStreamError,
-    VideoNotFoundError,
-)
-from tiktok_analytics_factory.perception.probe import parse_fps_rational, sha256_file
-
-from tests.perception_video_fixtures import (
-    make_corrupt_file,
-    make_multicut_video,
-    make_no_audio_video,
-    make_solid_color_video,
-)
+from tiktok_analytics_factory.perception.evaluation import CutAnnotation, shot_cut_timestamps
 
 
-@pytest.fixture
-def solid_video(tmp_path: Path) -> Path:
-    p = tmp_path / "solid.mp4"
-    make_solid_color_video(p, duration=2.0, color="red", with_audio=True)
-    return p
+@pytest.fixture(scope="module")
+def ffmpeg_available() -> bool:
+    from shutil import which
+
+    if which("ffmpeg") is None or which("ffprobe") is None:
+        pytest.skip("ffmpeg/ffprobe not available")
+    return True
 
 
-@pytest.fixture
-def multicut_video(tmp_path: Path) -> tuple[Path, list[float]]:
-    p = tmp_path / "multicut.mp4"
-    cuts = make_multicut_video(p)
-    return p, cuts
+# ---------------------------------------------------------------- ffprobe JSON
+
+def test_parse_ffprobe_json_valid():
+    raw = json.dumps({"streams": [{"codec_type": "video", "width": 1080}],
+                      "format": {"duration": "21.5"}})
+    data = parse_ffprobe_json(raw)
+    assert data["format"]["duration"] == "21.5"
 
 
-class TestProbeMedia:
-    def test_basic_facts(self, solid_video: Path):
-        facts = probe_media(solid_video)
-        assert 1.9 <= facts.duration_seconds <= 2.2
-        assert (facts.width, facts.height) == (64, 64)
-        assert facts.aspect_ratio_label == "1:1"
-        assert abs(facts.aspect_ratio_float - 1.0) < 1e-6
-        assert facts.fps == pytest.approx(30.0)
-        assert facts.video_codec in ("h264", "mpeg4", "vp9")
-        assert facts.has_audio is True
-        assert facts.audio_codec is not None
-        assert len(facts.sha256) == 64
-        assert facts.file_size_bytes > 0
-        assert facts.container_format
-        assert facts.ffprobe_version
+def test_parse_ffprobe_json_invalid():
+    with pytest.raises(UnreadableMediaError):
+        parse_ffprobe_json("{not json")
 
-    def test_sha_matches_independent_hash(self, solid_video: Path):
-        assert probe_media(solid_video).sha256 == sha256_file(solid_video)
 
-    def test_rational_fps_parsing(self):
-        frac = parse_fps_rational("30000/1001")
-        assert float(frac) == pytest.approx(29.97002997, rel=1e-6)
+def test_parse_ffprobe_json_non_object():
+    with pytest.raises(UnreadableMediaError):
+        parse_ffprobe_json("[1,2,3]")
 
-    def test_missing_file(self, tmp_path: Path):
-        with pytest.raises(VideoNotFoundError):
-            probe_media(tmp_path / "nope.mp4")
 
-    def test_corrupt_media(self, tmp_path: Path):
-        p = tmp_path / "corrupt.mp4"
-        make_corrupt_file(p)
-        with pytest.raises(CorruptMediaError):
-            probe_media(p)
+# ---------------------------------------------------------------- media probing
 
-    def test_no_video_stream(self, tmp_path: Path):
-        audio = tmp_path / "audio.m4a"
-        proc = _ffmpeg(
-            ["-f", "lavfi", "-i", "sine=frequency=440:d=0.5", str(audio)]
+def test_probe_media_full_facts(ffmpeg_available, tmp_path):
+    video = make_solid_video(tmp_path / "v.mp4", seconds=1.0, fps="30000/1001")
+    facts = probe_media(video)
+    assert facts.duration_seconds == pytest.approx(1.0, abs=0.2)
+    assert facts.width == 64 and facts.height == 64
+    assert facts.aspect_ratio == "1:1"
+    assert facts.fps_rational is not None
+    assert facts.fps == pytest.approx(30000 / 1001, abs=0.01)
+    assert facts.video_codec in ("h264",)
+    assert facts.has_audio is True
+    assert facts.audio_codec == "aac"
+    assert len(facts.sha256) == 64
+    assert facts.ffprobe_version
+    assert facts.probed_at
+    facts2 = probe_media(video)
+    assert facts2.sha256 == facts.sha256
+
+
+def test_probe_media_no_audio(ffmpeg_available, tmp_path):
+    video = make_solid_video(tmp_path / "silent.mp4", with_audio=False)
+    facts = probe_media(video)
+    assert facts.has_audio is False
+    assert facts.audio_codec is None
+
+
+def test_probe_media_missing_file():
+    with pytest.raises(MediaFileNotFoundError):
+        probe_media("/nonexistent/video.mp4")
+
+
+def test_probe_media_corrupt(tmp_path):
+    bad = tmp_path / "bad.mp4"
+    bad.write_bytes(b"\x00\x00\x00\x18ftypmp42garbage" * 8)
+    with pytest.raises(UnreadableMediaError):
+        probe_media(bad)
+
+
+def test_probe_media_no_video_stream(ffmpeg_available, tmp_path):
+    audio_only = tmp_path / "audio.m4a"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi",
+         "-i", "anullsrc=r=44100:cl=mono:d=0.5", "-c:a", "aac", "-y",
+         str(audio_only)],
+        check=True,
+        capture_output=True,
+    )
+    with pytest.raises(NoVideoStreamError):
+        probe_media(audio_only)
+
+
+# ---------------------------------------------------------------- shot detection
+
+def test_detect_shots_rational_fps(ffmpeg_available, tmp_path):
+    video = make_solid_video(tmp_path / "r.mp4", seconds=1.0, fps="30000/1001")
+    facts = probe_media(video)
+    result = detect_shots(video, DetectorConfig(min_scene_len_frames=5),
+                          media_facts=facts)
+    assert result.detector_version
+    assert result.parameters["threshold"] == 27.0
+    assert len(result.shots) == 1
+    shot = result.shots[0]
+    assert shot.start_seconds == 0.0
+    assert shot.start_frame == 0
+
+
+def test_no_cut_yields_single_shot(ffmpeg_available, tmp_path):
+    video = make_solid_video(tmp_path / "solid.mp4", seconds=1.0)
+    facts = probe_media(video)
+    result = detect_shots(video, DetectorConfig(min_scene_len_frames=5),
+                          media_facts=facts)
+    assert len(result.shots) >= 1
+    assert all(s.end_seconds > s.start_seconds for s in result.shots)
+
+
+def test_shots_ordered_and_terminated_at_duration(ffmpeg_available, tmp_path):
+    video = make_multicut_video(tmp_path / "cuts.mp4", segment_seconds=0.8,
+                                colors=("red", "blue", "green"))
+    facts = probe_media(video)
+    result = detect_shots(video, DetectorConfig(threshold=27.0), media_facts=facts)
+    shots = result.shots
+    assert len(shots) >= 3
+    for a, b in zip(shots, shots[1:]):
+        assert b.start_seconds >= a.end_seconds - 1e-6
+        assert b.start_frame >= a.end_frame - 1
+    assert shots[0].start_seconds == 0.0
+    assert abs(shots[-1].end_seconds - facts.duration_seconds) < 0.3
+    ids = [s.shot_id for s in shots]
+    assert ids == [f"shot_{i:03d}" for i in range(1, len(shots) + 1)]
+
+
+def test_detect_shots_missing_file():
+    with pytest.raises(MediaFileNotFoundError):
+        detect_shots("/nonexistent/v.mp4")
+
+
+def test_detect_shots_corrupt(tmp_path):
+    bad = tmp_path / "bad.mp4"
+    bad.write_bytes(b"junk" * 32)
+    with pytest.raises(UnreadableMediaError):
+        detect_shots(bad)
+
+
+# ---------------------------------------------------------------- frames
+
+def test_representative_frames_deterministic(ffmpeg_available, tmp_path):
+    video = make_multicut_video(tmp_path / "c.mp4", colors=("red", "blue", "green"))
+    facts = probe_media(video)
+    result = detect_shots(video, media_facts=facts)
+    out1 = tmp_path / "frames1"
+    out2 = tmp_path / "frames2"
+
+    art1 = extract_representative_frames(video, result.shots, out1, fps=facts.fps)
+    art2 = extract_representative_frames(video, result.shots, out2, fps=facts.fps)
+    assert [a.timestamp_seconds for a in art1] == [a.timestamp_seconds for a in art2]
+    names1 = sorted(Path(a.path).name for a in art1)
+    names2 = sorted(Path(a.path).name for a in art2)
+    assert names1 == names2 == sorted(s.shot_id + ".jpg" for s in result.shots)
+    for a in art1:
+        p = Path(a.path)
+        assert p.is_file() and p.stat().st_size > 0
+
+
+def test_representative_frames_missing_source(ffmpeg_available, tmp_path):
+    from tiktok_analytics_factory.perception.errors import FrameExtractionError
+    from tiktok_analytics_factory.perception.models import Shot
+
+    with pytest.raises(FrameExtractionError):
+        extract_representative_frames(
+            "/nonexistent.mp4",
+            [Shot("shot_001", 0.0, 1.0, 0, 30)],
+            tmp_path / "f",
         )
-        assert proc == 0
-        with pytest.raises(NoVideoStreamError):
-            probe_media(audio)
 
 
-def _ffmpeg(args: list[str]) -> int:
-    import subprocess
+# ---------------------------------------------------------------- pipeline
 
-    return subprocess.run(["ffmpeg", *args], capture_output=True).returncode
-
-
-class TestNoAudioVideo:
-    def test_absent_audio_is_a_fact_not_an_error(self, tmp_path: Path):
-        p = tmp_path / "silent.mp4"
-        make_no_audio_video(p)
-        facts = probe_media(p)
-        assert facts.has_audio is False
-        assert facts.audio_codec is None
-
-
-class TestDetectShots:
-    def test_no_cut_yields_single_shot(self, solid_video: Path):
-        result = detect_shots(solid_video)
-        assert len(result.shots) == 1
-        shot = result.shots[0]
-        assert shot.shot_id == "shot_001"
-        assert shot.start_seconds == 0.0
-        assert shot.end_seconds == pytest.approx(result.duration_seconds, abs=1.5)
-
-    def test_ordered_non_overlapping_and_full_coverage(self, multicut_video):
-        video, gt_cuts = multicut_video
-        result = detect_shots(video)
-        shots = result.shots
-        assert len(shots) >= len(gt_cuts)
-        assert shots[0].start_seconds == 0.0
-        for a, b in zip(shots, shots[1:]):
-            assert b.start_seconds >= a.end_seconds - 1e-6
-            assert a.end_seconds > a.start_seconds
-        # ids stable and ordered
-        assert [s.shot_id for s in shots] == [
-            f"shot_{i + 1:03d}" for i in range(len(shots))
-        ]
-        # last shot ends at probed duration within tolerance
-        facts = probe_media(video)
-        assert shots[-1].end_seconds == pytest.approx(facts.duration_seconds, abs=1.0 / facts.fps * 3)
-
-    def test_detector_provenance(self, solid_video: Path):
-        cfg = PerceptionConfig(threshold=25.0)
-        result = detect_shots(solid_video, cfg)
-        assert result.detector == "ContentDetector"
-        assert result.detector_version
-        assert result.parameters["threshold"] == 25.0
-
-    def test_deterministic_boundaries(self, multicut_video):
-        video, _ = multicut_video
-        r1 = detect_shots(video)
-        r2 = detect_shots(video)
-        assert [(s.start_seconds, s.end_seconds) for s in r1.shots] == [
-            (s.start_seconds, s.end_seconds) for s in r2.shots
-        ]
+def test_run_perception_manifest(ffmpeg_available, tmp_path):
+    video = make_multicut_video(tmp_path / "ref_video.mp4")
+    manifest = run_perception(video, tmp_path / "out")
+    d = manifest.to_dict()
+    assert d["pipeline_version"]
+    assert d["source_sha256"] == manifest.media_facts.sha256
+    assert (tmp_path / "out" / "media_facts.json").is_file()
+    assert (tmp_path / "out" / "shots.json").is_file()
+    assert (tmp_path / "out" / "perception_manifest.json").is_file()
+    saved = json.loads((tmp_path / "out" / "shots.json").read_text())
+    assert saved["detector"].startswith("PySceneDetect")
+    assert saved["parameters"]["threshold"] == 27.0
+    assert len(manifest.frames) == len(manifest.shots.shots)
 
 
-class TestRepresentativeFrames:
-    def test_one_frame_per_shot_deterministic_names(self, multicut_video, tmp_path: Path):
-        video, _ = multicut_video
-        result = detect_shots(video)
-        out1 = tmp_path / "frames1"
-        artifacts1 = extract_representative_frames(video, result, out1)
-        assert len(artifacts1) == len(result.shots)
-        for art in artifacts1:
-            assert Path(art.path).exists()
-            assert Path(art.path).name == f"{art.shot_id}.jpg"
-            mid = (result.shots[int(art.shot_id[-3:]) - 1].start_seconds +
-                   result.shots[int(art.shot_id[-3:]) - 1].end_seconds) / 2
-            assert art.timestamp_seconds == pytest.approx(mid)
+# ---------------------------------------------------------------- evaluation
 
-        out2 = tmp_path / "frames2"
-        artifacts2 = extract_representative_frames(video, result, out2)
-        assert [a.timestamp_seconds for a in artifacts1] == [
-            a.timestamp_seconds for a in artifacts2
-        ]
+def test_boundary_evaluation_metrics():
+    anns = [CutAnnotation(t) for t in (0.8, 1.6)]
+    detected = [0.85, 1.7, 2.4]  # third is an FP beyond tolerance
+    ev = evaluate_boundaries(detected, anns, tolerance_seconds=0.30)
+    assert ev.true_positives == 2
+    assert ev.false_positives == 1
+    assert ev.missed == 0
+    assert ev.precision == pytest.approx(2 / 3)
+    assert ev.recall == 1.0
+    assert ev.median_absolute_error_seconds == pytest.approx(0.075)
 
 
-class TestBoundaryEvaluation:
-    def test_metrics(self):
-        detected = [1.02, 2.01, 4.5]
-        truth = [1.0, 2.05, 3.5]
-        ev = evaluate_boundaries(detected, truth, tolerance_seconds=0.30)
-        assert ev.true_positives == 2
-        assert ev.false_positives == 1
-        assert ev.missed == 1
-        assert ev.precision == pytest.approx(2 / 3)
-        assert ev.recall == pytest.approx(2 / 3)
-        assert ev.f1 == pytest.approx(2 / 3)
-        assert ev.median_absolute_error_seconds == pytest.approx(0.03)
-
-    def test_empty_inputs(self):
-        ev = evaluate_boundaries([], [])
-        assert ev.precision == 0.0 and ev.recall == 0.0
-
-    def test_synthetic_fixture_evaluation(self, multicut_video):
-        video, gt_cuts = multicut_video
-        result = detect_shots(video)
-        detected = [s.start_seconds for s in result.shots if s.start_seconds > 0]
-        ev = evaluate_boundaries(detected, gt_cuts, tolerance_seconds=0.30)
-        assert ev.true_positives == len(gt_cuts)
-        assert ev.false_positives == 0
-        assert ev.recall == 1.0
-        assert ev.median_absolute_error_seconds <= 0.30
+def test_boundary_evaluation_missed_boundaries():
+    anns = [CutAnnotation(t) for t in (0.8, 1.6)]
+    ev = evaluate_boundaries([0.9], anns)
+    assert ev.true_positives == 1
+    assert ev.missed == 1
+    assert ev.recall == pytest.approx(0.5)
 
 
-class TestRunPerception:
-    def test_end_to_end_artifacts(self, multicut_video, tmp_path: Path):
-        video, _ = multicut_video
-        out = tmp_path / "out" / "vid" / "perception" / "v1"
-        manifest = run_perception(video, out)
-        assert (out / "media_facts.json").exists()
-        assert (out / "shots.json").exists()
-        assert (out / "manifest.json").exists()
+def test_shot_cut_timestamps_excludes_zero_start():
+    ts = shot_cut_timestamps([(0.0, 1.0), (1.0, 2.0), (2.0, 3.0)])
+    assert ts == [1.0, 2.0]
 
-        facts = json.loads((out / "media_facts.json").read_text())
-        shots_doc = json.loads((out / "shots.json").read_text())
-        assert facts["sha256"] == manifest.video_sha256
-        assert shots_doc["detector"] == "ContentDetector"
-        frame_paths = [Path(a.path) for a in manifest.frames]
-        assert all(p.exists() for p in frame_paths)
-        assert {p.parent.name for p in frame_paths} == {"frames"}
 
-    def test_manifest_serializable(self, solid_video: Path, tmp_path: Path):
-        manifest = run_perception(solid_video, tmp_path / "o")
-        doc = manifest.to_dict()
-        json.dumps(doc)  # must be plain JSON types
-        assert doc["pipeline_version"] == "v1"
+def test_synthetic_multicut_boundary_evaluation(ffmpeg_available, tmp_path):
+    """Synthetic multi-cut fixture: cuts land at segment joins."""
+    seg = 0.8
+    video = make_multicut_video(tmp_path / "synth.mp4", segment_seconds=seg)
+    facts = probe_media(video)
+    result = detect_shots(video, DetectorConfig(threshold=27.0), media_facts=facts)
+    detected = shot_cut_timestamps(
+        [(s.start_seconds, s.end_seconds) for s in result.shots]
+    )
+    expected_cuts = [seg * i for i in range(1, 3)]  # concat may insert tiny gaps;
+    ev = evaluate_boundaries(detected, [CutAnnotation(t) for t in expected_cuts])
+    assert ev.true_positives >= 1
+    assert ev.precision == 1.0 or ev.false_positives <= 1

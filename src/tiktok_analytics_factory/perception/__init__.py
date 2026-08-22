@@ -1,34 +1,54 @@
-"""Deterministic perception layer: media probing, shot segmentation,
-representative frames. No model/VLM/OCR dependency by design."""
+"""Deterministic perception layer: media facts, shot boundaries, frames.
 
+No VLM/OCR/transcription dependency. Facts a model should not guess come from
+ffprobe and PySceneDetect.
+"""
+
+from .errors import (
+    FFprobeUnavailableError,
+    FrameExtractionError,
+    MediaFileNotFoundError,
+    NoVideoStreamError,
+    PerceptionError,
+    SceneDetectorUnavailableError,
+    UnreadableMediaError,
+)
+from .evaluation import BoundaryEvaluation, CutAnnotation, evaluate_boundaries
+from .frames import extract_representative_frames
 from .models import (
-    PIPELINE_VERSION,
+    DetectorConfig,
     FrameArtifact,
     MediaFacts,
-    PerceptionConfig,
     PerceptionManifest,
+    Rational,
     Shot,
     ShotDetectionResult,
 )
-from .probe import probe_media, sha256_file
-from .shots import detect_shots
-from .frames import extract_representative_frames
 from .pipeline import run_perception
-from .evaluation import BoundaryEvaluation, evaluate_boundaries
+from .probing import parse_ffprobe_json, probe_media
+from .shots import detect_shots
 
 __all__ = [
-    "PIPELINE_VERSION",
+    "BoundaryEvaluation",
+    "CutAnnotation",
+    "DetectorConfig",
+    "FFprobeUnavailableError",
     "FrameArtifact",
+    "FrameExtractionError",
     "MediaFacts",
-    "PerceptionConfig",
+    "MediaFileNotFoundError",
+    "NoVideoStreamError",
+    "PerceptionError",
     "PerceptionManifest",
+    "Rational",
+    "SceneDetectorUnavailableError",
     "Shot",
     "ShotDetectionResult",
-    "probe_media",
-    "sha256_file",
+    "UnreadableMediaError",
     "detect_shots",
-    "extract_representative_frames",
-    "run_perception",
-    "BoundaryEvaluation",
     "evaluate_boundaries",
+    "extract_representative_frames",
+    "parse_ffprobe_json",
+    "probe_media",
+    "run_perception",
 ]

@@ -1,34 +1,31 @@
-"""Explicit errors for the deterministic perception layer.
-
-Rule: fail loudly. No silent fallbacks.
-"""
+"""Explicit errors for the deterministic perception layer."""
 
 from __future__ import annotations
 
 
 class PerceptionError(Exception):
-    """Base class for perception-layer failures."""
+    """Base class for perception failures."""
 
 
-class VideoNotFoundError(PerceptionError):
-    """The source video file does not exist."""
+class MediaFileNotFoundError(PerceptionError):
+    pass
 
 
-class FFprobeUnavailableError(PerceptionError):
-    """The ffprobe binary is not installed or not executable."""
-
-
-class CorruptMediaError(PerceptionError):
-    """ffprobe/decoders cannot read the media (invalid or corrupt)."""
+class UnreadableMediaError(PerceptionError):
+    """Corrupt or otherwise undecodable media."""
 
 
 class NoVideoStreamError(PerceptionError):
-    """The container has no video stream."""
+    pass
+
+
+class FFprobeUnavailableError(PerceptionError):
+    pass
 
 
 class SceneDetectorUnavailableError(PerceptionError):
-    """PySceneDetect is not importable."""
+    pass
 
 
 class FrameExtractionError(PerceptionError):
-    """A representative frame could not be decoded for a shot."""
+    pass
