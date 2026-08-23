@@ -1,25 +1,25 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "opencode/x-preview-f-free",
-  "small_model": "opencode/x-preview-f-free",
+  "model": "openrouter/stealth/ox-alpha",
+  "small_model": "openrouter/stealth/ox-alpha",
   "agent": {
     "build": {
-      "model": "opencode/x-preview-f-free"
+      "model": "openrouter/stealth/ox-alpha"
     },
     "plan": {
-      "model": "opencode/x-preview-f-free"
+      "model": "openrouter/stealth/ox-alpha"
     },
     "general": {
-      "model": "opencode/x-preview-f-free"
+      "model": "openrouter/stealth/ox-alpha"
     },
     "explore": {
-      "model": "opencode/x-preview-f-free"
+      "model": "openrouter/stealth/ox-alpha"
     },
     "compaction": {
-      "model": "opencode/x-preview-f-free"
+      "model": "openrouter/stealth/ox-alpha"
     },
     "summary": {
-      "model": "opencode/x-preview-f-free"
+      "model": "openrouter/stealth/ox-alpha"
     }
   }
 }

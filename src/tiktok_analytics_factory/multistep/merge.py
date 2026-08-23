@@ -179,6 +179,49 @@ def _labeled_free_list(items: Any) -> list[dict[str, Any]]:
     return out
 
 
+_CTA_HINT_RE = None
+
+
+def _mentions_cta(text: Any) -> bool:
+    import re
+
+    global _CTA_HINT_RE
+    if _CTA_HINT_RE is None:
+        _CTA_HINT_RE = re.compile(
+            r"\b(cta|call[s]? to action|comment[- ]?bait|engagement prompt|"
+            r"ask[s]?(ing)? viewers|comment your|drop a comment|follow for|"
+            r"link in bio)\b",
+            re.IGNORECASE,
+        )
+    return isinstance(text, str) and bool(_CTA_HINT_RE.search(text))
+
+
+def check_commercial_consistency(synthesis: dict[str, Any]) -> None:
+    """Fail loudly when Pass B contradicts itself about marketing/CTAs.
+
+    A ``non_commercial`` verdict alongside explicit CTA / engagement-prompt
+    evidence means the synthesis missed the caption's call to action; that is
+    the exact failure mode observed in run 20260823T083309Z and must surface
+    instead of silently merging.
+    """
+    inferred = synthesis.get("inferred") if isinstance(synthesis.get("inferred"), dict) else {}
+    commercial = inferred.get("commercial") if isinstance(inferred.get("commercial"), dict) else {}
+    if commercial.get("status") != "non_commercial":
+        return
+    hints = [synthesis.get("marketing_evidence")]
+    for mech in inferred.get("persuasion_mechanisms") or []:
+        if isinstance(mech, dict):
+            hints.extend([mech.get("label"), mech.get("rationale")])
+        elif isinstance(mech, str):
+            hints.append(mech)
+    if any(_mentions_cta(h) for h in hints):
+        raise MergeError(
+            "Pass B marked commercial.status='non_commercial' while its own "
+            "marketing evidence/persuasion mechanisms reference an explicit "
+            "call to action; rerun with consistent commercial reasoning"
+        )
+
+
 def _commercial(block: Any) -> dict[str, Any]:
     status = block.get("status") if isinstance(block, dict) else None
     status = status if status in ("commercial", "non_commercial", "uncertain") else "uncertain"
@@ -221,6 +264,7 @@ def merge_synthesis(
 ) -> dict[str, Any]:
     """Map the Pass B synthesis payload onto observed/inferred/generation blocks."""
     known_ids = set(expected_shot_ids)
+    check_commercial_consistency(synthesis)
 
     hook_block = synthesis.get("hook") or {}
     evidence_refs = (
@@ -257,14 +301,26 @@ def merge_synthesis(
     gen_shots = []
     for entry in gen_in.get("shots") or []:
         if isinstance(entry, dict) and entry.get("shot_id") in known_ids:
+            intent = str(entry.get("reconstruction_intent") or "").strip()
+            if len(intent) < 40:
+                raise MergeError(
+                    f"Pass B generation.shots[{entry.get('shot_id')}] has a "
+                    "vague/empty reconstruction_intent; the v0.2 contract "
+                    "requires an actionable per-shot instruction"
+                )
             gen_shots.append({
                 "shot_id": entry["shot_id"],
-                "reconstruction_intent": str(entry.get("reconstruction_intent") or ""),
+                "reconstruction_intent": intent,
             })
         elif isinstance(entry, dict) and entry.get("shot_id") not in known_ids:
             raise MergeError(
                 f"Pass B generation references unknown shot_id {entry.get('shot_id')!r}"
             )
+    missing = known_ids - {s["shot_id"] for s in gen_shots}
+    if missing:
+        raise MergeError(
+            f"Pass B generation is missing reconstruction instructions for: {sorted(missing)}"
+        )
 
     generation = {
         "global_brief": str(gen_in.get("global_brief") or synthesis.get("observed_summary") or ""),

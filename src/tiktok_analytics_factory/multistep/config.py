@@ -16,8 +16,8 @@ from tiktok_analytics_factory.baseline.config import PricingConfig
 
 PIPELINE_VERSION = "multistep_v1"
 RICH_SCHEMA_PATH = Path("schemas/creative_ir_v0_1.json")
-PASS_A_PROMPT_PATH = Path("prompts/multistep_pass_a_shot_analysis_v0_1.txt")
-PASS_B_PROMPT_PATH = Path("prompts/multistep_pass_b_synthesis_v0_1.txt")
+PASS_A_PROMPT_PATH = Path("prompts/multistep_pass_a_shot_analysis_v0_2.txt")
+PASS_B_PROMPT_PATH = Path("prompts/multistep_pass_b_synthesis_v0_2.txt")
 DEFAULT_DERIVED_ROOT = Path("data/derived")
 DEFAULT_PERCEPTION_VERSION = "v1"
 

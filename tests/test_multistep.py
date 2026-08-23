@@ -122,7 +122,13 @@ def synthesis_payload() -> dict:
                 {"label": "comment bait caption", "confidence": "high",
                  "rationale": "Caption asks viewers to comment their pet's name."},
             ],
-            "commercial": {"status": "non_commercial", "details": None},
+            "commercial": {
+                "status": "uncertain",
+                "details": {
+                    "product_presence": None,
+                    "cta": {"text": None, "text_exact": None, "type": "comment"},
+                },
+            },
         },
         "generation": {
             "global_brief": "Vertical 9:16 summer pet montage, ~10s, lively music, quick hard cuts.",
@@ -132,8 +138,14 @@ def synthesis_payload() -> dict:
             "continuity_constraints": ["Same dog across all shots."],
             "payoff_timing": None,
             "shots": [
-                {"shot_id": "shot_001", "reconstruction_intent": "Open on dog facing camera on boat."},
-                {"shot_id": "shot_002", "reconstruction_intent": "Track dog walking along poolside."},
+                {
+                    "shot_id": "shot_001",
+                    "reconstruction_intent": "Open on a fluffy dog facing camera on a boat seat, medium close-up, ~0.5s.",
+                },
+                {
+                    "shot_id": "shot_002",
+                    "reconstruction_intent": "Track the dog walking along the poolside, low-angle handheld, ~0.6s.",
+                },
             ],
         },
     }
@@ -339,6 +351,37 @@ class TestMerge:
         bad["generation"]["shots"].append({"shot_id": "shot_999", "reconstruction_intent": "?"})
         with pytest.raises(MergeError):
             self.merged(synthesis=bad)
+
+    def test_non_commercial_with_cta_evidence_fails_loudly(self):
+        """Regression: run 20260823T083309Z merged a self-contradictory
+        synthesis (non_commercial status + comment-bait persuasion)."""
+        bad = synthesis_payload()
+        bad["inferred"]["commercial"] = {"status": "non_commercial", "details": None}
+        with pytest.raises(MergeError, match="call to action"):
+            self.merged(synthesis=bad)
+
+    def test_non_commercial_without_cta_evidence_is_accepted(self):
+        ok = synthesis_payload()
+        ok["inferred"]["persuasion_mechanisms"] = [
+            {"label": "cuteness appeal", "confidence": "high", "rationale": "Cute dog."}
+        ]
+        ok["marketing_evidence"] = None
+        ok["inferred"]["commercial"] = {"status": "non_commercial", "details": None}
+        ir = self.merged(synthesis=ok)
+        assert ir["inferred"]["commercial"]["status"] == "non_commercial"
+
+    def test_vague_reconstruction_intent_fails(self):
+        bad = synthesis_payload()
+        bad["generation"]["shots"][0]["reconstruction_intent"] = "dog on boat."
+        with pytest.raises(MergeError, match="vague"):
+            self.merged(synthesis=bad)
+
+    def test_missing_generation_shot_coverage_fails(self):
+        bad = synthesis_payload()
+        bad["generation"]["shots"] = bad["generation"]["shots"][:1]
+        with pytest.raises(MergeError, match="missing reconstruction"):
+            self.merged(synthesis=bad)
+
 
     def test_canonical_projection_succeeds_on_merged_ir(self):
         canonical = project_creative_to_canonical(self.merged())
