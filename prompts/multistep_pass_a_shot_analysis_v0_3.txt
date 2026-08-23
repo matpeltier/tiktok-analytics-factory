@@ -1,0 +1,88 @@
+# Multi-step Pass A: factual shot analysis (v0.3, one shot per request)
+
+You are analyzing ONE short vertical video that has ALREADY been segmented into
+deterministic shots by a scene detector. This request is about EXACTLY ONE shot.
+You receive the full video, the deterministic descriptor of that single shot
+(shot_id, exact start/end timestamps, and its representative frame extracted at
+the shot midpoint).
+
+v0.2 of this pipeline sent all shots in one batched request and the model
+misaligned descriptions across shots (describing shot N+1 content under shot
+N's id). v0.3 eliminates that failure mode: each request covers one shot only,
+and the representative frame is the visual anchor for the shot's content.
+
+## Alignment rule (most important)
+
+- Analyze ONLY the content between the shot's start_seconds and end_seconds.
+- Use the attached representative frame as the primary ground truth for what
+  this shot shows. If the video content at those timestamps differs from the
+  frame, TRUST THE FRAME and describe the frame's content.
+- Never borrow content from other parts of the video. If you believe the frame
+  and the clip segment disagree, describe the frame and record the conflict in
+  "uncertainties".
+
+## Output contract
+
+- Output ONLY one valid JSON object. No markdown fences, no commentary.
+- Shape:
+  {
+    "shots": [ { ...exactly one entry... } ],
+    "uncertainties": ["...", ...]
+  }
+- "shots" contains EXACTLY ONE entry, for the shot_id given below.
+
+## Per-shot fields
+
+- "shot_id": copy exactly from the shot descriptor.
+- "subjects": visible subjects (empty array if none clearly visible).
+- "actions": visible actions (empty array when none observable).
+- "visual_description": what is literally on screen, grounded in the frame and clip.
+- "framing": one of "extreme_close_up", "close_up", "medium", "wide",
+  "extreme_wide", or "unknown" when not determinable.
+- "camera_movement": one of "static", "handheld", "pan", "tilt", "zoom_in",
+  "zoom_out", "tracking", or "unknown" — only claim movement genuinely
+  observable within this shot.
+- "on_screen_text": array of {"text": string, "exact": boolean}. Include ONLY
+  text you can actually read; "exact": true only for verbatim legible text,
+  false for partial/approximate readings. Empty array if none legible.
+- "spoken_dialogue": array of {"speaker": string|null, "text": string,
+  "exact": boolean, "confidence": "high"|"medium"|"low"}. Include lines only
+  when actually audible; always carry explicit uncertainty via "confidence".
+  Empty array if no speech.
+- "audio": {"music": string|null, "music_certainty": "observed"|"uncertain"|
+  "absent"|"unknown", "sfx": ..., "sfx_certainty": ..., "ambience": ...,
+  "ambience_certainty": ...}. Be conservative: NEVER invent track titles,
+  artists, or specific sound-effect identities; use "unknown"/"uncertain".
+  Music/SFX continuity from neighboring shots may inform "uncertain" notes,
+  never "observed" identities.
+- "transition_in": how this shot begins relative to the previous one: one of
+  "cut", "jump_cut", "whip_pan", "match_cut", "fade", "wipe",
+  "none_single_shot", or "unknown".
+- "local_semantic_role": brief role of this shot within its immediate context
+  (e.g. "establishing", "reaction", "detail") when reasonably inferable;
+  otherwise "unknown".
+
+## Hard prohibitions
+
+- Do NOT change, restate, or re-estimate shot start/end timestamps. Timestamps
+  are deterministic inputs; do not echo them back as your own claims.
+- Do NOT guess exact media duration/resolution/fps/codec.
+- Do NOT invent audio identities, track names, artists, or specific effects.
+- Do NOT convert creative interpretation into observed fact. Keep to what is
+  visible/audible; anything interpretive stays out of this pass.
+
+## Precision requirements
+
+- Describe accessories and body parts only at the specificity you can actually
+  verify from the frame (e.g. write "collar or harness around neck" rather
+  than committing to "harness" when a collar is equally consistent).
+- State camera/viewpoint (front, side, rear, high-angle, low-angle) only when
+  the frame makes it unambiguous; otherwise omit it from visual_description.
+
+## Deterministic shot descriptor (single shot)
+
+```json
+{shot_list}
+```
+
+Now produce the Pass A JSON object for this single shot only.

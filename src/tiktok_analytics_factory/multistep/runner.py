@@ -13,6 +13,8 @@ a success.
 from __future__ import annotations
 
 import json
+import re
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +51,14 @@ class MultiStepRunError(RuntimeError):
     pass
 
 
+def _retry_delay_seconds(message: str, attempt: int) -> float:
+    """Honor the API's retryDelay when present; exponential backoff otherwise."""
+    match = re.search(r"retry in ([\d.]+)s", message)
+    if match:
+        return float(match.group(1)) + 2.0
+    return min(60.0, 5.0 * 2 ** (attempt - 1))
+
+
 PassCaller = Callable[[list[dict[str, Any]], dict[str, Any]], tuple[str, dict[str, Any]]]
 
 
@@ -69,11 +79,25 @@ def _call_gemini(config: MultiStepConfig, parts: list[dict[str, Any]], settings:
             sdk_parts.append(part["data"].decode())
         else:
             sdk_parts.append(types.Part.from_bytes(data=part["data"], mime_type=part["mime_type"]))
-    response = client.models.generate_content(
-        model=model_id,
-        contents=sdk_parts,
-        config=types.GenerateContentConfig(**settings),
-    )
+    max_attempts = 6
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model=model_id,
+                contents=sdk_parts,
+                config=types.GenerateContentConfig(**settings),
+            )
+            break
+        except Exception as exc:  # noqa: BLE001 - surfaced below on final attempt
+            message = str(exc)
+            retriable = "429" in message or "RESOURCE_EXHAUSTED" in message or "503" in message
+            if not retriable or attempt == max_attempts:
+                raise MultiStepRunError(
+                    f"Gemini call failed after {attempt} attempt(s): {message}"
+                ) from exc
+            delay = _retry_delay_seconds(message, attempt)
+            print(f"[multistep] rate-limited; retry {attempt}/{max_attempts - 1} in {delay:.0f}s", file=sys.stderr)
+            time.sleep(delay)
     raw_text = response.text or ""
     um = getattr(response, "usage_metadata", None)
     usage_metadata = {}
@@ -144,52 +168,74 @@ def run_multistep(
 
     pass_records: list[dict[str, Any]] = []
 
-    # ---------------- Pass A ----------------
+    # ---------------- Pass A (batched; batch size 1 by default in v0.3) -----
     shot_list = build_shot_list(shots_result, frames)
     expected_ids = [s["shot_id"] for s in shots_result["shots"]]
-    prompt_a, parts_a = build_pass_a_request(config, video_bytes, shot_list)
-    started_at = datetime.now(timezone.utc).isoformat()
-    artifacts.write_shot_analysis_request(0, {
-        "video_id": video_id,
-        "video_sha256": sha256_bytes(video_bytes),
-        "provider": config.provider,
-        "model_id": config.model_id,
-        "prompt_version": config.pass_a_prompt_version,
-        "generation_settings": settings,
-        "shot_ids": expected_ids,
-        "parts": _summarize_parts(parts_a),
-        "started_at": started_at,
-    })
+    batches = [
+        shot_list[i:i + config.pass_a_batch_size]
+        for i in range(0, len(shot_list), config.pass_a_batch_size)
+    ]
+    analyses_by_id: dict[str, dict[str, Any]] = {}
+    uncertainties: list[str] = []
+    pass_a_artifact_refs: list[str] = []
+    for batch_index, batch in enumerate(batches):
+        prompt_a, parts_a = build_pass_a_request(config, video_bytes, batch)
+        batch_ids = [s["shot_id"] for s in batch]
+        started_at = datetime.now(timezone.utc).isoformat()
+        artifacts.write_shot_analysis_request(batch_index, {
+            "video_id": video_id,
+            "video_sha256": sha256_bytes(video_bytes),
+            "provider": config.provider,
+            "model_id": config.model_id,
+            "prompt_version": config.pass_a_prompt_version,
+            "generation_settings": settings,
+            "shot_ids": batch_ids,
+            "parts": _summarize_parts(parts_a),
+            "started_at": started_at,
+        })
 
-    t0 = time.monotonic()
-    if caller is None:
-        raw_a, usage_a = _call_gemini(config, parts_a, settings, config.model_id)
-    else:
-        raw_a, usage_a = caller(parts_a, settings)
-    latency_a = round(time.monotonic() - t0, 3)
-    artifacts.write_shot_analysis_raw(0, raw_a)
+        t0 = time.monotonic()
+        if caller is None:
+            raw_a, usage_a = _call_gemini(config, parts_a, settings, config.model_id)
+        else:
+            raw_a, usage_a = caller(parts_a, settings)
+        latency_a = round(time.monotonic() - t0, 3)
+        artifacts.write_shot_analysis_raw(batch_index, raw_a)
 
-    try:
-        parsed_a = parse_model_output(raw_a)
-    except ParseError as exc:
-        artifacts.write_shot_analysis_parsed(0, None)
-        raise MultiStepRunError(f"Pass A parse failure: {exc}") from exc
-    artifacts.write_shot_analysis_parsed(0, parsed_a)
-    try:
-        validate_shot_analysis(parsed_a, expected_ids)
-    except ShotAnalysisError as exc:
-        raise MultiStepRunError(f"Pass A response invalid: {exc}") from exc
+        try:
+            parsed_a = parse_model_output(raw_a)
+        except ParseError as exc:
+            artifacts.write_shot_analysis_parsed(batch_index, None)
+            raise MultiStepRunError(f"Pass A parse failure (batch {batch_index}): {exc}") from exc
+        artifacts.write_shot_analysis_parsed(batch_index, parsed_a)
+        try:
+            validate_shot_analysis(parsed_a, batch_ids)
+        except ShotAnalysisError as exc:
+            raise MultiStepRunError(
+                f"Pass A response invalid (batch {batch_index}): {exc}"
+            ) from exc
 
-    pass_records.append({
-        "pass": "A_factual_shot_analysis",
-        "model_id": config.model_id,
-        "prompt_version": config.pass_a_prompt_version,
-        "latency_seconds": latency_a,
-        "usage": usage_a,
-        "cost_usd": config.pricing.cost_usd(
-            usage_a.get("input_tokens"), usage_a.get("output_tokens")
-        ),
-    })
+        for entry in parsed_a["shots"]:
+            analyses_by_id[entry["shot_id"]] = entry
+        uncertainties.extend(parsed_a.get("uncertainties") or [])
+        pass_a_artifact_refs.append(f"shot_analysis/response_{batch_index:03d}.raw.txt")
+
+        pass_records.append({
+            "pass": f"A_factual_shot_analysis_batch_{batch_index:03d}",
+            "shot_ids": batch_ids,
+            "model_id": config.model_id,
+            "prompt_version": config.pass_a_prompt_version,
+            "latency_seconds": latency_a,
+            "usage": usage_a,
+            "cost_usd": config.pricing.cost_usd(
+                usage_a.get("input_tokens"), usage_a.get("output_tokens")
+            ),
+        })
+
+    combined_analyses = {
+        "shots": [analyses_by_id[sid] for sid in expected_ids],
+        "uncertainties": uncertainties,
+    }
 
     # ---------------- Pass B ----------------
     synthesis_model = config.synthesis_model
@@ -261,10 +307,10 @@ def run_multistep(
             source_metadata=source_metadata,
             media_facts=media_facts,
             shots_result=shots_result,
-            shot_analyses_parsed=parsed_a,
+            shot_analyses_parsed=combined_analyses,
             synthesis_parsed=parsed_b,
             decompilation=decompilation_block,
-            pass_a_artifact_refs=["shot_analysis/response_000.raw.txt"],
+            pass_a_artifact_refs=pass_a_artifact_refs,
             synthesis_artifact_refs=["synthesis/response.raw.txt"],
         )
     except MergeError as exc:

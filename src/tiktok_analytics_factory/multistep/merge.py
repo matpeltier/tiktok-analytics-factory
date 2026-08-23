@@ -257,6 +257,20 @@ def _commercial(block: Any) -> dict[str, Any]:
     return {"status": status, "details": merged_details}
 
 
+def _string_list(value: Any, field: str) -> list[str]:
+    """Normalize a model-provided string list; never iterate a bare string."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, list) and all(isinstance(c, str) for c in value):
+        return [c for c in value if c.strip()]
+    raise MergeError(
+        f"Pass B generation.{field} must be a string or a list of strings; "
+        f"got {type(value).__name__}"
+    )
+
+
 def merge_synthesis(
     synthesis: dict[str, Any],
     expected_shot_ids: list[str],
@@ -327,7 +341,7 @@ def merge_synthesis(
         "timeline_pacing": gen_in.get("timeline_pacing") if isinstance(gen_in.get("timeline_pacing"), (str, type(None))) else None,
         "text_treatment": gen_in.get("text_treatment") if isinstance(gen_in.get("text_treatment"), (str, type(None))) else None,
         "transitions": gen_in.get("transitions") if isinstance(gen_in.get("transitions"), (str, type(None))) else None,
-        "continuity_constraints": [c for c in (gen_in.get("continuity_constraints") or []) if isinstance(c, str)],
+        "continuity_constraints": _string_list(gen_in.get("continuity_constraints"), "continuity_constraints"),
         "payoff_timing": gen_in.get("payoff_timing") if isinstance(gen_in.get("payoff_timing"), (str, type(None))) else None,
         "shots": gen_shots,
     }

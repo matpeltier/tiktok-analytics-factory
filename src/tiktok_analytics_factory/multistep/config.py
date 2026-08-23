@@ -16,8 +16,8 @@ from tiktok_analytics_factory.baseline.config import PricingConfig
 
 PIPELINE_VERSION = "multistep_v1"
 RICH_SCHEMA_PATH = Path("schemas/creative_ir_v0_1.json")
-PASS_A_PROMPT_PATH = Path("prompts/multistep_pass_a_shot_analysis_v0_2.txt")
-PASS_B_PROMPT_PATH = Path("prompts/multistep_pass_b_synthesis_v0_2.txt")
+PASS_A_PROMPT_PATH = Path("prompts/multistep_pass_a_shot_analysis_v0_3.txt")
+PASS_B_PROMPT_PATH = Path("prompts/multistep_pass_b_synthesis_v0_4.txt")
 DEFAULT_DERIVED_ROOT = Path("data/derived")
 DEFAULT_PERCEPTION_VERSION = "v1"
 
@@ -36,6 +36,10 @@ class MultiStepConfig:
     max_output_tokens: int | None = None
     pass_a_prompt_path: Path = PASS_A_PROMPT_PATH
     pass_b_prompt_path: Path = PASS_B_PROMPT_PATH
+    # v0.3: one shot per Pass A request by default. The v0.2 batched request
+    # let the model misalign descriptions across shot ids on the reference
+    # video (documented in run 20260823T143743Z_3066e41f).
+    pass_a_batch_size: int = 1
     schema_path: Path = RICH_SCHEMA_PATH
     derived_root: Path = DEFAULT_DERIVED_ROOT
     perception_version: str = DEFAULT_PERCEPTION_VERSION
@@ -142,6 +146,9 @@ def load_multistep_config(
         ),
         pass_a_prompt_path=Path(file_cfg.get("pass_a_prompt_path", PASS_A_PROMPT_PATH)),
         pass_b_prompt_path=Path(file_cfg.get("pass_b_prompt_path", PASS_B_PROMPT_PATH)),
+        pass_a_batch_size=int(
+            file_cfg.get("pass_a_batch_size", env.get("MULTISTEP_PASS_A_BATCH_SIZE", 1))
+        ),
         schema_path=Path(file_cfg.get("schema_path", RICH_SCHEMA_PATH)),
         derived_root=Path(file_cfg.get("derived_root", DEFAULT_DERIVED_ROOT)),
         perception_version=str(

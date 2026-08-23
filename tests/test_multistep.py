@@ -253,6 +253,39 @@ class TestRequests:
         settings = build_generation_settings(make_config(tmp_path))
         assert settings["response_mime_type"] == "application/json"
 
+    def test_pass_a_v0_3_prompt_anchors_single_shot_alignment(self, tmp_path):
+        pdir = perception_dir(tmp_path, with_frames=True)
+        config = make_config(tmp_path)
+        manifest = json.loads((pdir / "perception_manifest.json").read_text())
+        shot_list = build_shot_list(SHOTS_JSON, manifest["frames"])
+        prompt, parts = build_pass_a_request(config, b"v", [shot_list[1]])
+        roles = [p.get("role") for p in parts]
+        assert roles == ["source_video", "frame:shot_002", "prompt"]
+        assert "EXACTLY ONE shot" in prompt
+        assert "TRUST THE FRAME" in prompt
+        assert "shot_001" not in prompt
+
+    def test_config_pass_a_batch_size_from_env(self):
+        cfg = load_multistep_config(env={
+            "MULTISTEP_MODEL_ID": "gemini-x",
+            "MULTISTEP_PASS_A_BATCH_SIZE": "5",
+        })
+        assert cfg.pass_a_batch_size == 5
+
+    def test_per_batch_wrong_shot_id_fails_run(self, tmp_path):
+        perception_dir(tmp_path)
+        config = make_config(tmp_path)
+        video = tmp_path / "video.mp4"
+        video.write_bytes(b"f")
+        payload = pass_a_payload()
+
+        def call_a(parts, settings):
+            # batch 0 (shot_001) answered with shot_002's analysis
+            return json.dumps({"shots": [payload["shots"][1]]}), {}
+
+        with pytest.raises(MultiStepRunError, match="batch 0"):
+            run_multistep(config, video, VIDEO_ID, source_metadata(), caller=call_a)
+
 
 # --- parsing -----------------------------------------------------------------
 
@@ -401,7 +434,20 @@ class TestRunner:
 
         def call_a(parts, settings):
             calls["count"] += 1
-            return raw_a, {"input_tokens": usage[0], "output_tokens": usage[1], "total_tokens": usage[0] + usage[1]}
+            # v0.3: one shot per request; answer only for the requested ids
+            prompt = next(p for p in parts if p.get("role") == "prompt")["data"].decode()
+            ids = [sid for sid in ("shot_001", "shot_002") if sid in prompt]
+            try:
+                parsed_raw = json.loads(raw_a)
+            except json.JSONDecodeError:
+                parsed_raw = None
+            if isinstance(parsed_raw, dict) and "shots" in parsed_raw:
+                payload = {"shots": [s for s in parsed_raw["shots"] if s["shot_id"] in ids],
+                           "uncertainties": ["music track identity unknown"]}
+                raw = json.dumps(payload)
+            else:
+                raw = raw_a
+            return raw, {"input_tokens": usage[0], "output_tokens": usage[1], "total_tokens": usage[0] + usage[1]}
 
         def call_b(parts, settings):
             calls["count"] += 1
@@ -428,6 +474,8 @@ class TestRunner:
             "media_facts.json", "shots.json",
             "shot_analysis/request_000.json", "shot_analysis/response_000.raw.txt",
             "shot_analysis/response_000.parsed.json",
+            "shot_analysis/request_001.json", "shot_analysis/response_001.raw.txt",
+            "shot_analysis/response_001.parsed.json",
             "synthesis/prompt.txt", "synthesis/response.raw.txt",
             "synthesis/response.parsed.json",
             "creative_ir.json", "canonical_ir.json", "validation.json", "usage.json",
@@ -438,7 +486,8 @@ class TestRunner:
         evaluation = json.loads((directory / "evaluation.json").read_text())
         assert evaluation["schema_validation_success"] is True
         assert all(evaluation["deterministic_fact_checks"].values())
-        assert evaluation["model_call_count"] == 2
+        # v0.3 default: one Pass A request per shot + one Pass B request
+        assert evaluation["model_call_count"] == 3
         assert evaluation["cost_usd"] is not None
         assert evaluation["scores_pending_manual_review"] is True
         # certain claims from the fixture payload are inventoried for review
@@ -468,12 +517,14 @@ class TestRunner:
 
         result = run_multistep(config, video, VIDEO_ID, source_metadata(), caller=call_a, synthesis_caller=call_b)
         usage = result["usage"]
-        assert usage["model_call_count"] == 2
-        assert usage["total_usage"]["input_tokens"] == 222
-        assert usage["total_usage"]["output_tokens"] == 444
+        # 2 Pass A batches (one per shot) + 1 Pass B
+        assert usage["model_call_count"] == 3
+        assert [p["shot_ids"] for p in usage["passes"][:2]] == [["shot_001"], ["shot_002"]]
+        assert usage["total_usage"]["input_tokens"] == 333
+        assert usage["total_usage"]["output_tokens"] == 666
         expected_cost = round((111 / 1e6 * pricing_input + 222 / 1e6 * pricing_output), 6)
         assert usage["passes"][0]["cost_usd"] == expected_cost
-        assert usage["total_cost_usd"] == round(expected_cost * 2, 6)
+        assert usage["total_cost_usd"] == round(expected_cost * 3, 6)
 
     def test_invalid_pass_a_json_fails_run_but_keeps_raw(self, tmp_path):
         perception_dir(tmp_path)
