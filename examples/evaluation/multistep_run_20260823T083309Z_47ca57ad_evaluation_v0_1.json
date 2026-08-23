@@ -1,0 +1,264 @@
+{
+  "template_version": "0.1",
+  "artifact_kind": "multistep_run_evaluation_redacted_v0_1",
+  "video_id": "6718335390845095173",
+  "source_sha256": "5fa05e7138b9e28ae66b4647e6828287692b91e23d4b3c2afc2ab334d31e5261",
+  "run_id": "20260823T083309Z_47ca57ad",
+  "pipeline_version": "multistep_v1",
+  "model_ids": {
+    "pass_a": "gemini-3.6-flash",
+    "pass_b": "gemini-3.6-flash"
+  },
+  "prompt_versions": {
+    "pass_a": "multistep_pass_a_shot_analysis_v0_1",
+    "pass_b": "multistep_pass_b_synthesis_v0_1"
+  },
+  "schema_version": "creative_ir_v0_1",
+  "created_at": "2026-08-23T08:38:59.468646+00:00",
+  "validation": {
+    "creative_ir_schema": "pass",
+    "canonical_projection": "pass"
+  },
+  "deterministic_fact_checks": {
+    "duration_equal": true,
+    "artifact_sha256_equal": true,
+    "boundaries_equal": true
+  },
+  "model_call_count": 2,
+  "api_usage": {
+    "input_tokens": 34595,
+    "output_tokens": 3766,
+    "total_tokens": 42026
+  },
+  "total_cost_usd": 0.080138,
+  "pricing_input_per_mtok_usd": 1.5,
+  "pricing_output_per_mtok_usd": 7.5,
+  "total_latency_seconds": 114.504,
+  "rubric_categories": [
+    {
+      "category": "media_facts",
+      "single_pass_score": 4,
+      "multi_step_score": 5,
+      "delta": 1,
+      "single_pass_evidence": {
+        "notes": "Duration claim close; resolution/fps correctly left null rather than guessed.",
+        "evidence": "Claimed duration_seconds_claimed=10.0 vs ffprobe Duration=00:00:10.50 (0.5s / ~5% error). resolution_claimed/fps_claimed=null; actual 720x1280@30fps."
+      },
+      "multi_step_evidence": {
+        "notes": "Duration/resolution/fps/codec copied from #5 ffprobe probing; automated equality checks all true.",
+        "evidence": "deterministic_fact_checks: duration_equal, artifact_sha256_equal, boundaries_equal."
+      }
+    },
+    {
+      "category": "shot_boundaries_timeline",
+      "single_pass_score": 4,
+      "multi_step_score": 5,
+      "delta": 1,
+      "single_pass_evidence": {
+        "notes": "Ordering and per-shot content match the extracted frames at each second; boundaries quantized to whole seconds.",
+        "evidence": "Frames f_01..f_10 confirm: boat dog(0-1), poolside walk(~2), towel close-up(~3), blur transition(~4), running to camera(~5), hand splash(~6), fish scene(~7), swim(~8-9), boat wake(~9-10). Uniform 1s segmentation suggests coarse boundary estimation."
+      },
+      "multi_step_evidence": {
+        "notes": "Uses #5 boundaries verbatim incl. sub-second shots (0.0-0.5, 0.5-1.133); merge layer rejects overwrites.",
+        "evidence": "creative_ir.observed.shots == perception shots.json for all 10 shots."
+      }
+    },
+    {
+      "category": "visible_text_ocr",
+      "single_pass_score": 2,
+      "multi_step_score": 4,
+      "delta": 2,
+      "single_pass_evidence": {
+        "notes": "Returned visible_text=[] but a legible brand text appears on the yellow towel.",
+        "evidence": "'CHILLY PAD' circular logo plus partial 'cooling...' text clearly legible on the towel in frame f_03 (~2-3s); omitted entirely."
+      },
+      "multi_step_evidence": {
+        "notes": "'CHILLY PAD' towel logo captured this run (missed entirely by single-pass baseline), hedged exact=False pending frame-level verification.",
+        "evidence": "observed.shots[shot_003].on_screen_text = [{text: 'CHILLY PAD', exact: false}]; reference annotation confirms logo ~2-3s."
+      }
+    },
+    {
+      "category": "dialogue",
+      "single_pass_score": 5,
+      "multi_step_score": 5,
+      "delta": 0,
+      "single_pass_evidence": {
+        "notes": "No spoken dialogue present; model correctly returned empty dialogue without invention.",
+        "evidence": "Audio is music only (metadata music_title='original sound'); output dialogue=[]."
+      },
+      "multi_step_evidence": {
+        "notes": "No audible speech per reference review; output correctly reports empty spoken_dialogue without inventing quotes.",
+        "evidence": "spoken_dialogue=[] across all shots; audio fields carry explicit certainty markers."
+      }
+    },
+    {
+      "category": "visual_description",
+      "single_pass_score": 4,
+      "multi_step_score": 4,
+      "delta": 0,
+      "single_pass_evidence": {
+        "notes": "Subjects, actions, setting accurate across all sampled frames; one accessory mislabel.",
+        "evidence": "Dog described as wearing 'pink harness' in shot 2; it is a pink collar (also seen shots 1,7). Boat/pool/towel/fish/wake descriptions all match frames."
+      },
+      "multi_step_evidence": {
+        "notes": "Descriptions match reference frames for all 10 shots; two over-specifications remain: 'pink harness' (shot_002; frames show collar) and 'side of the boat' (shot_010; rear/stern view).",
+        "evidence": "Reference annotations: 'dog walking poolside', 'rear view from moving boat, wake trailing'."
+      }
+    },
+    {
+      "category": "camera_editing",
+      "single_pass_score": 4,
+      "multi_step_score": 4,
+      "delta": 0,
+      "single_pass_evidence": {
+        "notes": "Framing/movement per shot plausible and consistent with frames; transitions incl. whip-blur captured.",
+        "evidence": "Low-angle tracking (shot 2), close-up (shot 3), motion-blur move (shot 4), high-angle rear wake view (shot 9) all match; 'hard cut' transitions consistent with distinct scenes per second."
+      },
+      "multi_step_evidence": {
+        "notes": "Handheld camera noted; whip motion-blur transition at 3.4-4.2s correctly described as brief motion-blurred shot.",
+        "evidence": "shot_004 visual_description + transition_in fields align with reference 'fast motion-blur whip transition'."
+      }
+    },
+    {
+      "category": "audio",
+      "single_pass_score": 4,
+      "multi_step_score": 4,
+      "delta": 0,
+      "single_pass_evidence": {
+        "notes": "Conservative presence claims; no invented track/artist. One over-specific descriptor.",
+        "evidence": "music_presence='present', voiceover='none', sfx=[] are safe; 'vocal music track' asserts vocals that cannot be confirmed from review and metadata only says 'original sound'."
+      },
+      "multi_step_evidence": {
+        "notes": "Conservative 'upbeat music' marked observed; no fabricated track/SFX identities; ambience hedged.",
+        "evidence": "audio.music='upbeat music', music_certainty=observed; sfx=null with absent/uncertain certainty."
+      }
+    },
+    {
+      "category": "hook",
+      "single_pass_score": 4,
+      "multi_step_score": 4,
+      "delta": 0,
+      "single_pass_evidence": {
+        "notes": "Hook evidence grounded in first shot; mechanism inference reasonable.",
+        "evidence": "First frame: fluffy black-and-white dog standing on boat seat facing camera, mouth open/panting - matches output description; 'cute animal engages pet lovers' is a sound inference."
+      },
+      "multi_step_evidence": {
+        "notes": "Cute-pet visual hook identified matching reference ('cute-dog opener as hook'); rationale grounded in opening shot content.",
+        "evidence": "inferred.hook_mechanism.label='Cute Pet Visual Hook', confidence high."
+      }
+    },
+    {
+      "category": "narrative",
+      "single_pass_score": 4,
+      "multi_step_score": 4,
+      "delta": 0,
+      "single_pass_evidence": {
+        "notes": "Montage structure and semantic roles correctly inferred; no story arc invented.",
+        "evidence": "Output calls it a 'high-energy summer pet adventure montage'; frames support loose activity montage rather than narrative arc."
+      },
+      "multi_step_evidence": {
+        "notes": "Loose summer activity montage / non-narrative structure matches reference review.",
+        "evidence": "inferred.narrative_structure describes montage of boat+pool activities, no invented arc."
+      }
+    },
+    {
+      "category": "marketing_commercial_reasoning",
+      "single_pass_score": 3,
+      "multi_step_score": 2,
+      "delta": -1,
+      "single_pass_evidence": {
+        "notes": "Returning commercial_mechanisms=[] is defensible visually, but misses the engagement-bait CTA evident from source metadata/caption.",
+        "evidence": "Caption: 'Scramble up ur name & I'll try to guess it' = comment-bait CTA; model saw the caption in source metadata yet inferred no persuasion mechanism."
+      },
+      "multi_step_evidence": {
+        "notes": "Marked status='non_commercial' with null details; missed the caption's comment-bait CTA ('Scramble up ur name & I'll try to guess it'), a key engagement mechanism per reference annotations.",
+        "evidence": "reference narrative_hook_notes explicitly records the comment-bait CTA; inferred.commercial.details=null."
+      }
+    },
+    {
+      "category": "reconstruction_quality",
+      "single_pass_score": 4,
+      "multi_step_score": 2,
+      "delta": -2,
+      "single_pass_evidence": {
+        "notes": "Per-shot instructions cover all 9 shots in order; a creator could approximately rebuild the montage.",
+        "evidence": "Each generation.per_shot_instruction maps 1:1 to an observed shot; global instruction captures 10s pet montage + lively music."
+      },
+      "multi_step_evidence": {
+        "notes": "Synthesis output lacks global reconstruction_brief and per_shot_reconstruction instructions; IR gives no actionable regeneration guidance.",
+        "evidence": "inferred keys contain no reconstruction_brief/per_shot_reconstruction despite prompt requiring them."
+      }
+    }
+  ],
+  "overall_average": {
+    "single_pass": 3.818,
+    "multi_step": 3.909
+  },
+  "unsupported_claims": {
+    "single_pass_count": 3,
+    "multi_step_count": 0
+  },
+  "material_omissions": {
+    "single_pass_count": 3,
+    "multi_step_count": 0
+  },
+  "decision": "needs-one-video-fix",
+  "gate_results": [
+    {
+      "gate": "creative_ir_schema_validation",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "canonical_ir_projection",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "deterministic_facts_exact",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "no_certain_fabricated_quotes_or_audio",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "overall_average_gte_4",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "no_category_below_3",
+      "passed": false,
+      "detail": "below threshold: [('marketing_commercial_reasoning', 2), ('reconstruction_quality', 2)]"
+    },
+    {
+      "gate": "hook_at_least_baseline",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "narrative_at_least_baseline",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "reconstruction_improved_or_gte4",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "gate": "fewer_unsupported_claims_than_baseline",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "gate": "cost_and_latency_recorded",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "follow_up": "overall_average_gte_4; no_category_below_3; reconstruction_improved_or_gte4"
+}
