@@ -101,6 +101,14 @@ def build_comparison(
             "multi_step": bool(multistep_evaluation.get("schema_validation_success")),
         },
         "certain_claim_inventory": multistep_evaluation.get("certain_claim_inventory", []),
+        # Filled by the reviewer during manual scoring; empty list means every
+        # inventoried certain claim was verified against the reference video.
+        "certain_fabricated_claims": multistep_evaluation.get(
+            "certain_fabricated_claims", []
+        ),
+        "deterministic_fact_checks": multistep_evaluation.get(
+            "deterministic_fact_checks", {}
+        ),
         "operational": {
             "single_pass": {
                 "latency_seconds": baseline_evaluation.get("latency_seconds"),
