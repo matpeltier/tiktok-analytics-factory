@@ -33,7 +33,7 @@ from tiktok_analytics_factory.multistep.merge import MergeError, merge_creative_
 from tiktok_analytics_factory.multistep.parsing import (
     ParseError,
     ShotAnalysisError,
-    parse_model_output,
+    parse_multistep_model_output,
     validate_creative_ir,
     validate_shot_analysis,
     validate_synthesis,
@@ -230,7 +230,7 @@ def run_multistep(
         artifacts.write_shot_analysis_raw(batch_index, raw_a)
 
         try:
-            parsed_a = parse_model_output(raw_a)
+            parsed_a = parse_multistep_model_output(raw_a)
         except ParseError as exc:
             artifacts.write_shot_analysis_parsed(batch_index, None)
             raise MultiStepRunError(f"Pass A parse failure (batch {batch_index}): {exc}") from exc
@@ -297,7 +297,7 @@ def run_multistep(
     artifacts.write_synthesis_raw(raw_b)
 
     try:
-        parsed_b = parse_model_output(raw_b)
+        parsed_b = parse_multistep_model_output(raw_b)
         artifacts.write_synthesis_parsed(parsed_b)
         validate_synthesis(parsed_b)
     except ParseError as exc:

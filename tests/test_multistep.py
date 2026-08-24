@@ -300,6 +300,20 @@ class TestParsing:
         with pytest.raises(ParseError):
             parse_model_output("not json at all")
 
+    def test_parse_repairs_malformed_unicode_escapes(self):
+        from tiktok_analytics_factory.multistep.parsing import (
+            parse_multistep_model_output,
+        )
+
+        # regression: live Pass B emitted a truncated escape + unpaired
+        # surrogate inside the exact CTA quote ('...guess it\ud\ude0d...')
+        raw = '{"marketing_evidence": "caption: \'guess it\\ud\\ude0d\\u2764\'"}'
+        parsed = parse_multistep_model_output(raw)
+        assert "guess it" in parsed["marketing_evidence"]
+        # genuinely broken JSON still fails loudly
+        with pytest.raises(ParseError):
+            parse_multistep_model_output("not json at all")
+
     def test_validate_shot_analysis_missing_shot_fails(self):
         payload = pass_a_payload()
         payload["shots"] = payload["shots"][:1]

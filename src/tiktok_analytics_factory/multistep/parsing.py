@@ -1,11 +1,16 @@
 """Deterministic parsing for the multi-step decompiler.
 
 Reuses the baseline's single deterministic strategy (strip one optional code
-fence, then json.loads) and schema validation. No repair passes.
+fence, then json.loads) and schema validation. The only repair allowed is a
+narrow fix for malformed ``\\uXXXX`` escapes (truncated escapes and
+unpaired surrogates), which Gemini emits occasionally inside exact quotes;
+the repaired text is only used when the strict parse fails, and the raw
+response is always preserved verbatim by the runner.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -15,12 +20,50 @@ from tiktok_analytics_factory.contracts import ContractValidationError, validate
 
 __all__ = [
     "ParseError",
+    "parse_multistep_model_output",
     "parse_model_output",
     "validate_against_schema",
     "ShotAnalysisError",
     "validate_shot_analysis",
     "validate_synthesis",
 ]
+
+
+_MALFORMED_UNICODE_ESCAPE = re.compile(r"\\u[0-9a-fA-F]{1,4}")
+
+
+def _repair_malformed_unicode_escapes(text: str) -> str:
+    """Drop truncated \\u escapes and unpaired surrogate escapes.
+
+    Only applied as a fallback after a strict json.loads failure. Escaped
+    literal backslashes ("\\\\u...") are left untouched because the regex
+    requires exactly one leading backslash.
+    """
+
+    def _sub(match: re.Match[str]) -> str:
+        hexpart = match.group(0)[2:]
+        if len(hexpart) < 4:
+            return ""  # truncated escape such as \ud
+        codepoint = int(hexpart, 16)
+        if 0xD800 <= codepoint <= 0xDFFF:
+            return ""  # unpaired surrogate
+        return match.group(0)
+
+    return _MALFORMED_UNICODE_ESCAPE.sub(_sub, text)
+
+
+def parse_multistep_model_output(raw: str) -> Any:
+    """Strict parse first; on failure, retry after unicode-escape repair."""
+    try:
+        return parse_model_output(raw)
+    except ParseError:
+        repaired = _repair_malformed_unicode_escapes(raw)
+        if repaired == raw:
+            raise
+        try:
+            return parse_model_output(repaired)
+        except ParseError:
+            raise
 
 
 class ShotAnalysisError(RuntimeError):
