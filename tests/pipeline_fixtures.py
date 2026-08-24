@@ -100,10 +100,10 @@ def fail_stage(category: str):
     return run
 
 
-def fake_stages(perception=ok_stage("perception"), decompile=None):
+def fake_stages(perception=None, decompile=None):
     return PipelineStages(
         performance_snapshot=ok_stage("performance"),
-        perception=perception,
+        perception=perception or ok_stage("perception"),
         decompile=decompile or fake_decompile(),
         project_canonical=ok_stage("canonical", artifacts={"observed_at": "2026-08-24T00:00:00+00:00"}),
     )

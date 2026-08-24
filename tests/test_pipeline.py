@@ -357,8 +357,8 @@ def test_schema_valid_derived_from_validation_artifacts(tmp_path):
 # --- retry policy + source hash persisted in manifest --------------------------
 
 def test_manifest_records_retry_policy_and_source_hash(tmp_path):
-    summary = _run(tmp_path, [{"url": url_for("801"), "video_id": "801"}],
-                   ingest=FakeIngest())
+    _run(tmp_path, [{"url": url_for("801"), "video_id": "801"}],
+         ingest=FakeIngest())
     rec = tmp_path / "dataset" / "records" / "801"
     manifest = json.loads((rec / "record_manifest.json").read_text())
     assert manifest["retry_policy"]["max_attempts"] == 1
