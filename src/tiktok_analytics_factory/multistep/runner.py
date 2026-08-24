@@ -82,6 +82,7 @@ def _call_gemini(config: MultiStepConfig, parts: list[dict[str, Any]], settings:
     max_attempts = 6
     for attempt in range(1, max_attempts + 1):
         try:
+            _wait_for_model_gap(config.min_model_call_gap_seconds)
             response = client.models.generate_content(
                 model=model_id,
                 contents=sdk_parts,
@@ -245,7 +246,7 @@ def run_multistep(
         source_metadata,
         media_facts,
         shot_list,
-        parsed_a,
+        combined_analyses,
     )
     artifacts.write_synthesis_prompt(prompt_b)
     artifacts.write_synthesis_request({
