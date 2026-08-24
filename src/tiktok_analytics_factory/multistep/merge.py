@@ -71,7 +71,8 @@ def check_no_boundary_overwrite(
 
 
 def build_source_block(source_metadata: dict[str, Any], media_facts: dict[str, Any]) -> dict[str, Any]:
-    raw = source_metadata.get("raw") if isinstance(source_metadata.get("raw"), dict) else source_metadata
+    raw_candidate = source_metadata.get("raw")
+    raw: dict[str, Any] = raw_candidate if isinstance(raw_candidate, dict) else source_metadata
     published_at = raw.get("timestamp")
     return {
         "platform": "tiktok",
@@ -204,8 +205,10 @@ def check_commercial_consistency(synthesis: dict[str, Any]) -> None:
     the exact failure mode observed in run 20260823T083309Z and must surface
     instead of silently merging.
     """
-    inferred = synthesis.get("inferred") if isinstance(synthesis.get("inferred"), dict) else {}
-    commercial = inferred.get("commercial") if isinstance(inferred.get("commercial"), dict) else {}
+    inferred_in = synthesis.get("inferred")
+    inferred: dict[str, Any] = inferred_in if isinstance(inferred_in, dict) else {}
+    commercial_in = inferred.get("commercial")
+    commercial: dict[str, Any] = commercial_in if isinstance(commercial_in, dict) else {}
     if commercial.get("status") != "non_commercial":
         return
     hints = [synthesis.get("marketing_evidence")]
@@ -275,7 +278,7 @@ def merge_synthesis(
     synthesis: dict[str, Any],
     expected_shot_ids: list[str],
     artifact_refs: list[str],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Map the Pass B synthesis payload onto observed/inferred/generation blocks."""
     known_ids = set(expected_shot_ids)
     check_commercial_consistency(synthesis)
@@ -295,7 +298,7 @@ def merge_synthesis(
             hook[key] = float(hook_block[key])
 
     inferred_in = synthesis.get("inferred") or {}
-    inferred = {
+    inferred: dict[str, Any] = {
         "concept": _labeled(inferred_in.get("concept")),
         "target_audience_hypothesis": _labeled(inferred_in.get("target_audience_hypothesis")),
         "hook_type": _labeled(inferred_in.get("hook_type")),
@@ -346,7 +349,7 @@ def merge_synthesis(
         "shots": gen_shots,
     }
 
-    observed_partial = {
+    observed_partial: dict[str, Any] = {
         "summary": str(synthesis.get("observed_summary") or ""),
         "hook": hook,
     }

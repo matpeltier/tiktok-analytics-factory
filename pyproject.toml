@@ -31,6 +31,11 @@ baseline = [
     "jsonschema>=4.21",
     "jupyter>=1",
 ]
+pilot = [
+    "pyarrow>=14",
+    "pandas>=2",
+    "ipywidgets>=8",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -39,3 +44,6 @@ where = ["src"]
 testpaths = ["tests"]
 markers = ["integration: optional live-network tests (deselected by default)"]
 addopts = "-m 'not integration'"
+
+[tool.mypy]
+ignore_missing_imports = true

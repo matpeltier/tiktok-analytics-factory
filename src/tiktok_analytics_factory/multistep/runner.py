@@ -16,15 +16,15 @@ import json
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from tiktok_analytics_factory.baseline.artifacts import new_run_id, sha256_bytes
 from tiktok_analytics_factory.contracts import (
     ContractValidationError,
     project_creative_to_canonical,
-    validate as contracts_validate,
 )
 from tiktok_analytics_factory.multistep.artifacts import MultiStepArtifacts
 from tiktok_analytics_factory.multistep.config import PIPELINE_VERSION, MultiStepConfig
@@ -39,7 +39,6 @@ from tiktok_analytics_factory.multistep.parsing import (
     validate_synthesis,
 )
 from tiktok_analytics_factory.multistep.request import (
-    RequestBuildError,
     build_generation_settings,
     build_pass_a_request,
     build_pass_b_request,
@@ -115,7 +114,7 @@ def _call_gemini(config: MultiStepConfig, parts: list[dict[str, Any]], settings:
                 config=types.GenerateContentConfig(**settings),
             )
             break
-        except Exception as exc:  # noqa: BLE001 - surfaced below on final attempt
+        except Exception as exc:
             message = str(exc)
             retriable = "429" in message or "RESOURCE_EXHAUSTED" in message or "503" in message
             if not retriable or attempt == max_attempts:
@@ -208,7 +207,7 @@ def run_multistep(
     for batch_index, batch in enumerate(batches):
         prompt_a, parts_a = build_pass_a_request(config, video_bytes, batch)
         batch_ids = [s["shot_id"] for s in batch]
-        started_at = datetime.now(timezone.utc).isoformat()
+        started_at = datetime.now(UTC).isoformat()
         artifacts.write_shot_analysis_request(batch_index, {
             "video_id": video_id,
             "video_sha256": sha256_bytes(video_bytes),
@@ -284,7 +283,7 @@ def run_multistep(
         "generation_settings": settings,
         "includes_video": include_video_in_synthesis,
         "parts": _summarize_parts(parts_b),
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(UTC).isoformat(),
     })
 
     t0 = time.monotonic()
@@ -315,7 +314,7 @@ def run_multistep(
     })
 
     # ---------------- Deterministic merge + validation ----------------
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now(UTC).isoformat()
     decompilation_block = {
         "schema_version": "0.1",
         "pipeline_version": f"{PIPELINE_VERSION}",
@@ -393,7 +392,7 @@ def run_multistep(
         "total_latency_seconds": round(sum(p["latency_seconds"] for p in pass_records), 3),
         "pricing_input_per_mtok_usd": config.pricing.input_per_mtok_usd,
         "pricing_output_per_mtok_usd": config.pricing.output_per_mtok_usd,
-        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
     }
     artifacts.write_usage(usage_report)
     artifacts.write_evaluation(

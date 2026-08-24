@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 try:
@@ -15,10 +15,15 @@ except Exception:  # pragma: no cover
     PACKAGE_VERSION = "0.0.0"
 
 from .collectors import Attempt, CollectionResult, collect_with_fallback
-from .errors import ArtifactMismatchError, DownloadError_, FileWriteError, InvalidURLError
+from .errors import (
+    ArtifactMismatchError,
+    DownloadError_,
+    FileWriteError,
+    InvalidURLError,
+)
 from .mapping import normalize_payload
 from .models import NormalizedMetadata
-from .urls import extract_video_id, canonical_url, validate_tiktok_url
+from .urls import canonical_url, validate_tiktok_url
 
 
 def sha256_of(data: bytes) -> str:
@@ -49,7 +54,7 @@ def _write_observation_snapshot(
     canonical_manifest: dict | None = None,
 ) -> str:
     """Write a timestamp-versioned observation without touching canonical files."""
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     _write_json(artifact_dir / f"metadata.raw.{stamp}.json", raw_payload)
     _write_json(artifact_dir / f"metadata.normalized.{stamp}.json", metadata.to_json_dict())
     if canonical_manifest is not None:
@@ -61,7 +66,7 @@ def _write_observation_snapshot(
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -131,7 +136,13 @@ def ingest(
 
     mp4_was_reused = mp4_path.exists()
 
-    new_hash = sha256_of(result.mp4_bytes)
+    media_bytes = result.mp4_bytes
+    if not media_bytes:
+        raise DownloadError_(
+            "Collector result carries no media bytes.",
+            detail={"video_id": video_id, "collector": result.collector_name},
+        )
+    new_hash = sha256_of(media_bytes)
 
     collected_at = result.collected_at
     metadata = normalize_payload(
@@ -181,10 +192,10 @@ def ingest(
     else:
         try:
             artifact_dir.mkdir(parents=True, exist_ok=True)
-            mp4_path.write_bytes(result.mp4_bytes)
+            mp4_path.write_bytes(media_bytes)
         except OSError as exc:
             raise FileWriteError(f"Could not write {mp4_path}: {exc}") from exc
-        file_hash, size = new_hash, len(result.mp4_bytes)
+        file_hash, size = new_hash, len(media_bytes)
 
     if raw_meta_path.exists() and not force_new_observation:
         pass  # keep original raw snapshot immutable
@@ -205,7 +216,7 @@ def ingest(
 
     # Manifest paths are always local-relative and portable, even when
     # output_root itself is absolute.
-    rel = lambda name: f"{video_id}/{name}"  # noqa: E731
+    rel = lambda name: f"{video_id}/{name}"
     manifest_artifacts = {
         "video": rel("video.mp4"),
         "metadata_raw": rel("metadata.raw.json"),

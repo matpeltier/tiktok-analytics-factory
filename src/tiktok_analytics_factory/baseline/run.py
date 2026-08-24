@@ -13,8 +13,15 @@ from tiktok_analytics_factory.baseline.artifacts import (
     sha256_bytes,
 )
 from tiktok_analytics_factory.baseline.config import BaselineConfig
-from tiktok_analytics_factory.baseline.parsing import ParseError, parse_model_output, validate_against_schema
-from tiktok_analytics_factory.baseline.request import build_generation_settings, build_request_contents
+from tiktok_analytics_factory.baseline.parsing import (
+    ParseError,
+    parse_model_output,
+    validate_against_schema,
+)
+from tiktok_analytics_factory.baseline.request import (
+    build_generation_settings,
+    build_request_contents,
+)
 
 
 class BaselineRunError(RuntimeError):

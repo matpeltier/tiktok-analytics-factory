@@ -5,13 +5,12 @@ import json
 import pytest
 
 import tiktok_analytics_factory.ingestion as ing
-from tiktok_analytics_factory.ingestion import ingest
+from tests.fixtures import FAKE_MP4_A, FAKE_MP4_B, FakeCollector
 from tiktok_analytics_factory.ingestion.errors import (
     ArtifactMismatchError,
     DownloadError_,
     VideoUnavailableError,
 )
-from tests.fixtures import FAKE_MP4_A, FAKE_MP4_B, FakeCollector
 
 
 class StubCollector(FakeCollector):
@@ -112,8 +111,6 @@ def test_invalid_url_fails_fast(tmp_path):
 
 # ---- PM blocker regression tests ----
 
-from tiktok_analytics_factory.ingestion.collectors import CollectionResult
-from tiktok_analytics_factory.ingestion.errors import DownloadError_
 
 
 def _canonical_files(d):

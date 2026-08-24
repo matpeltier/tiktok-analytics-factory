@@ -14,9 +14,9 @@ import json
 import sys
 from pathlib import Path
 
+from .artifacts import MultiStepArtifacts
 from .config import load_multistep_config
 from .evaluation import build_comparison, evaluate_decision, load_evaluation
-from .artifacts import MultiStepArtifacts
 from .runner import MultiStepRunError, run_multistep
 
 
