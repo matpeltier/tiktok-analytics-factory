@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import shutil
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .stages import PipelineStageError, StageResult, VideoContext, PIPELINE_VERSION
+from .stages import PipelineStageError, PipelineStages, StageResult, VideoContext
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -51,15 +51,15 @@ def performance_snapshot_stage(ctx: VideoContext) -> StageResult:
     if not video_id:
         raise PipelineStageError("performance_snapshot", "missing_video_id",
                                  "ingestion payload has no video id")
-    observed_at = meta.get("collected_at") or datetime.now(timezone.utc).isoformat(
+    observed_at = meta.get("collected_at") or datetime.now(UTC).isoformat(
         timespec="seconds"
     )
     published_at = meta.get("published_at")
     age_seconds = None
     if published_at:
         try:
-            pub = datetime.fromisoformat(str(published_at).replace("Z", "+00:00"))
-            obs = datetime.fromisoformat(str(observed_at).replace("Z", "+00:00"))
+            pub = datetime.fromisoformat(str(published_at))
+            obs = datetime.fromisoformat(str(observed_at))
             age_seconds = max(0.0, (obs - pub).total_seconds())
         except ValueError as exc:
             raise PipelineStageError(
@@ -242,9 +242,7 @@ def canonical_projection_stage(ctx: VideoContext) -> StageResult:
     )
 
 
-def build_default_stages() -> "PipelineStages":  # type: ignore[name-defined]
-    from .stages import PipelineStages
-
+def build_default_stages() -> PipelineStages:
     return PipelineStages(
         performance_snapshot=performance_snapshot_stage,
         perception=perception_stage,

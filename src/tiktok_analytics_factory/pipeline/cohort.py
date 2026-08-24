@@ -30,7 +30,7 @@ class CohortPolicy:
     rules: dict[str, Any]
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "CohortPolicy":
+    def from_dict(cls, payload: dict[str, Any]) -> CohortPolicy:
         for key in ("cohort_id", "version"):
             if not payload.get(key):
                 raise ValueError(f"cohort config missing required field: {key}")

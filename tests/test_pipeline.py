@@ -12,12 +12,21 @@ from tiktok_analytics_factory.ingestion.ingest import ingest as real_ingest
 from tiktok_analytics_factory.pipeline.cohort import CohortPolicy, load_cohort
 from tiktok_analytics_factory.pipeline.index import build_index
 from tiktok_analytics_factory.pipeline.record import RECORD_STATUSES, build_manifest
-from tiktok_analytics_factory.pipeline.report import aggregate, apply_manual_review, decide_gate
-from tiktok_analytics_factory.pipeline.retry import RetryPolicy, TransientError, run_with_retry
+from tiktok_analytics_factory.pipeline.report import (
+    aggregate,
+    apply_manual_review,
+    decide_gate,
+)
+from tiktok_analytics_factory.pipeline.retry import (
+    RetryPolicy,
+    TransientError,
+    run_with_retry,
+)
 from tiktok_analytics_factory.pipeline.runner import PilotOptions, run_pilot
 from tiktok_analytics_factory.pipeline.sources import SourceEntry, load_sources
+from tiktok_analytics_factory.pipeline.stages import PipelineStageError
 
-from .pipeline_fixtures import FakeIngest, fail_stage, fake_stages
+from .pipeline_fixtures import FakeIngest, fake_stages
 
 
 @pytest.fixture

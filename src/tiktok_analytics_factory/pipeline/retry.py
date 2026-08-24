@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, TypeVar
+from typing import Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,8 @@ class RetryPolicy:
 
 
 @dataclass
-class RetryOutcome:
-    value: object | None
+class RetryOutcome(Generic[T]):
+    value: T | None
     attempts: int
     succeeded: bool
     errors: list[str] = field(default_factory=list)

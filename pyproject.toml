@@ -44,3 +44,6 @@ where = ["src"]
 testpaths = ["tests"]
 markers = ["integration: optional live-network tests (deselected by default)"]
 addopts = "-m 'not integration'"
+
+[tool.mypy]
+ignore_missing_imports = true

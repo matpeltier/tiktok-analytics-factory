@@ -35,8 +35,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     args = build_parser().parse_args(argv)
 
-    from .runner import PilotOptions, run_pilot
     from .retry import RetryPolicy
+    from .runner import PilotOptions, run_pilot
 
     summary = run_pilot(
         args.cohort,

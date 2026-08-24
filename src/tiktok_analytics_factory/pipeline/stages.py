@@ -9,8 +9,9 @@ the caller; nothing here silently falls back.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 PIPELINE_VERSION = "pilot-1.0.0"
 
@@ -40,7 +41,7 @@ class StageResult:
     error_message: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        d = {
+        d: dict[str, Any] = {
             "ok": self.ok,
             "usage_cost_usd": self.usage_cost_usd,
             "latency_seconds": self.latency_seconds,
@@ -58,7 +59,7 @@ class StageResult:
 
 
 class Stage(Protocol):
-    def __call__(self, ctx: "VideoContext") -> StageResult: ...
+    def __call__(self, ctx: VideoContext) -> StageResult: ...
 
 
 @dataclass

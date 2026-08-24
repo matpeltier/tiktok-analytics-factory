@@ -12,7 +12,7 @@ import logging
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..ingestion.ingest import ingest
 from ..ingestion.models import NormalizedMetadata
@@ -22,12 +22,17 @@ from .record import (
     build_manifest,
     build_record_dir,
     persist_rejection,
-    utc_now_iso,
     write_json,
 )
-from .report import aggregate, apply_manual_review
+from .report import aggregate
 from .retry import RetryPolicy, run_with_retry
-from .stages import PipelineStages, PipelineStageError, StageResult, VideoContext, PIPELINE_VERSION
+from .stages import (
+    PIPELINE_VERSION,
+    PipelineStageError,
+    PipelineStages,
+    StageResult,
+    VideoContext,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +102,10 @@ def _process_one(
             lambda: ingest(entry.url, str(output_root / "raw")),
             options.retry_policy,
         )
-        if not outcome.succeeded:
+        if not outcome.succeeded or outcome.value is None:
             raise RuntimeError("; ".join(outcome.errors))
         result = outcome.value
-        video_id = result.video_id
+        video_id: str = result.video_id
         record_dir = build_record_dir(output_root, video_id)
         metadata = NormalizedMetadata(**result.metadata.to_json_dict())
         ingest_payload = {
@@ -120,7 +125,7 @@ def _process_one(
             if src.exists() and not (record_dir / "source" / name).exists():
                 shutil.copy2(src, record_dir / "source" / name)
         write_json(record_dir / "source" / "metadata.normalized.json", metadata.to_json_dict())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - failure isolation must catch everything per video
         vid = getattr(exc, "payload", {}).get("video_id", None) if hasattr(exc, "payload") else entry.video_id
         logger.error("ingestion failed for %s: %s", entry.url, exc)
         if record_dir is not None:
@@ -162,8 +167,7 @@ def _process_one(
             res = fn(ctx)
         except PipelineStageError as exc:
             res = StageResult(ok=False, error_category=exc.category, error_message=exc.message)
-            res.stage_name = exc.stage  # type: ignore[attr-defined]
-        except Exception as exc:  # fail loudly but isolate the video
+        except Exception as exc:  # noqa: BLE001 - failure isolation must catch everything per video
             res = StageResult(ok=False, error_category="unexpected", error_message=str(exc))
         stage_results[name] = res
         if not res.ok:
@@ -175,12 +179,11 @@ def _process_one(
             }
             break
 
-    source_hash = video_hash = None
+    video_hash = None
     src_video = record_dir / "source" / "video.mp4"
     if src_video.exists():
         video_hash = _sha256_file(src_video)
 
-    artifacts = stage_results.get("decompile").artifacts if stage_results.get("decompile") else {}
     perf = stage_results.get("performance_snapshot")
     manifest = build_manifest(
         entry=entry_with_id(entry, ctx.video_id),

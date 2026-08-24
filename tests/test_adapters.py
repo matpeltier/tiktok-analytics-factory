@@ -4,27 +4,24 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
 import tiktok_analytics_factory.multistep.runner as ms_runner
 import tiktok_analytics_factory.perception.pipeline as percep_pipeline
+import tiktok_analytics_factory.pipeline.runner as runner_mod
 from tiktok_analytics_factory.pipeline.adapters import (
-    build_default_stages,
     canonical_projection_stage,
     performance_snapshot_stage,
 )
 from tiktok_analytics_factory.pipeline.cohort import load_cohort
-from tiktok_analytics_factory.pipeline.runner import PilotOptions, run_pilot
 from tiktok_analytics_factory.pipeline.retry import RetryPolicy
+from tiktok_analytics_factory.pipeline.runner import PilotOptions, run_pilot
 from tiktok_analytics_factory.pipeline.stages import (
     PipelineStageError,
     VideoContext,
-    PIPELINE_VERSION,
 )
-
-import tiktok_analytics_factory.pipeline.runner as runner_mod
-
 
 # --- performance snapshot stage ------------------------------------------------
 
@@ -85,13 +82,13 @@ def test_cohort_loader_rejects_unapproved_config(tmp_path):
 # --- full batch run through the default (validated) stages ----------------------
 
 class _FakePerceptionManifest:
-    pipeline_version = "v1"
+    pipeline_version: str = "v1"
 
     class _Shots:
-        shots = [{"shot_id": "shot_001"}]
+        shots: ClassVar[list] = [{"shot_id": "shot_001"}]
 
     shots = _Shots()
-    frames = [{}]
+    frames: ClassVar[list] = [{}]
 
 
 @pytest.fixture
