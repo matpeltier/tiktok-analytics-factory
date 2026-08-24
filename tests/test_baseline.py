@@ -86,7 +86,8 @@ class TestConfig:
         assert cfg.model_id == "m-from-file"
         assert cfg.temperature == 0.7
 
-    def test_api_key_required_and_never_serialized(self):
+    def test_api_key_required_and_never_serialized(self, monkeypatch):
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
         cfg = load_baseline_config(env={"BASELINE_MODEL_ID": "x"})
         with pytest.raises(BaselineConfigError):
             cfg.require_api_key()
