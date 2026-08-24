@@ -291,3 +291,88 @@ def test_required_statuses_defined():
         "success", "rejected_by_cohort", "ingestion_failed",
         "perception_failed", "decompilation_failed", "validation_failed",
     } <= RECORD_STATUSES
+
+
+# --- gate review coverage / hallucination blockers ----------------------------
+
+def _gate_metrics(n_success=25, success_rate=1.0):
+    m = aggregate([], requested=n_success)
+    m.update({
+        "fully_processed": n_success, "success_rate": success_rate,
+        "schema_validation_rate": 1.0,
+    })
+    return m
+
+
+def test_gate_blocks_insufficient_review_coverage():
+    metrics = _gate_metrics()
+    reviews = [
+        {"video_id": "a", "scores": {"media_facts": 5}, "errors": []},
+    ]
+    metrics = apply_manual_review(metrics, reviews)
+    decision, blockers = decide_gate(metrics)
+    assert decision == "decompiler-needs-more-work"
+    assert any("coverage 1 < required 5" in b for b in blockers)
+
+
+def test_gate_passes_with_sufficient_reviews():
+    n = 25
+    reviews = [
+        {"video_id": str(i), "scores": {"media_facts": 4.5, "reconstruction": 4.5}, "errors": []}
+        for i in range(6)  # >= max(5, ceil(0.2*25)) = 5
+    ]
+    metrics = apply_manual_review(_gate_metrics(n), reviews)
+    decision, blockers = decide_gate(metrics)
+    assert decision == "ready-for-modeling-dataset"
+    assert blockers == []
+
+
+def test_gate_blocks_systematic_hallucination_category():
+    n = 20
+    reviews = [
+        {"video_id": str(i), "scores": {"dialogue": 3}, "errors": ["dialogue"]}
+        for i in range(5)
+    ]
+    metrics = apply_manual_review(_gate_metrics(n), reviews)
+    decision, blockers = decide_gate(metrics)
+    assert decision == "decompiler-needs-more-work"
+    assert any("systematic severe errors in category 'dialogue'" in b for b in blockers)
+
+
+# --- schema_valid derived from artifacts --------------------------------------
+
+def test_schema_valid_derived_from_validation_artifacts(tmp_path):
+    summary = _run(tmp_path, [{"url": url_for("701"), "video_id": "701"}],
+                   ingest=FakeIngest())
+    assert summary.rows[0]["status"] == "success"
+    rec = tmp_path / "dataset" / "records" / "701"
+    manifest = json.loads((rec / "record_manifest.json").read_text())
+    assert manifest["schema_valid"] is True
+    # Corrupt the validation artifact and reprocess; schema_valid must flip.
+    (rec / "decompilation" / "validation.json").write_text('{"valid": false}')
+    from tiktok_analytics_factory.pipeline.runner import _schema_validation_ok
+    assert _schema_validation_ok(rec) is False
+
+
+# --- retry policy + source hash persisted in manifest --------------------------
+
+def test_manifest_records_retry_policy_and_source_hash(tmp_path):
+    summary = _run(tmp_path, [{"url": url_for("801"), "video_id": "801"}],
+                   ingest=FakeIngest())
+    rec = tmp_path / "dataset" / "records" / "801"
+    manifest = json.loads((rec / "record_manifest.json").read_text())
+    assert manifest["retry_policy"]["max_attempts"] == 1
+    assert manifest["source_hash"]  # sha256 of metadata.normalized.json
+    assert len(manifest["source_hash"]) == 64
+
+
+# --- empty index ---------------------------------------------------------------
+
+def test_build_index_writes_empty_parquet_when_no_records(tmp_path):
+    import pyarrow.parquet as pq
+
+    out = tmp_path / "index.parquet"
+    rows = build_index(tmp_path / "records", out)
+    assert rows == []
+    assert out.exists()
+    assert pq.read_table(out).num_rows == 0

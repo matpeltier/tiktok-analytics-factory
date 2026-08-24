@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import statistics
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,11 @@ from .record import utc_now_iso
 GATE_MIN_SUCCESS = 20
 GATE_MIN_SUCCESS_RATE = 0.85
 GATE_MIN_REVIEW_OVERALL = 4.0
+GATE_MIN_REVIEW_COUNT = 5
+GATE_REVIEW_FRACTION = 0.20
+# A category is a "systematic severe hallucination" blocker when at least half
+# of the reviewed records (minimum 2) report an error in that category.
+HALLUCINATION_MIN_REPORTS = 2
 
 
 def percentile(values: list[float], pct: float) -> float:
@@ -85,7 +91,21 @@ def apply_manual_review(metrics: dict[str, Any], reviews: list[dict[str, Any]]) 
         "per_review": reviews,
     }
     metrics["error_counts_by_category"] = error_counts
+    review_errors = _review_error_counts(reviews)
+    metrics["manual_review"]["errors_by_category"] = review_errors
     return metrics
+
+
+def _review_error_counts(reviews: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for r in reviews:
+        for e in r.get("errors", []):
+            counts[e] = counts.get(e, 0) + 1
+    return counts
+
+
+def required_review_count(n_success: int) -> int:
+    return max(GATE_MIN_REVIEW_COUNT, math.ceil(GATE_REVIEW_FRACTION * n_success))
 
 
 def decide_gate(metrics: dict[str, Any]) -> tuple[str, list[str]]:
@@ -102,6 +122,24 @@ def decide_gate(metrics: dict[str, Any]) -> tuple[str, list[str]]:
     avg = review.get("average_overall")
     if avg is None or avg < GATE_MIN_REVIEW_OVERALL:
         blockers.append(f"manual review average {avg} < {GATE_MIN_REVIEW_OVERALL}")
+    reviewed = review.get("reviewed_count", 0)
+    required_reviews = required_review_count(n_success)
+    if reviewed < required_reviews:
+        blockers.append(
+            f"manual review coverage {reviewed} < required {required_reviews} "
+            f"(max(5, ceil(20% of successes)))"
+        )
+    hallucination_blockers = [
+        cat
+        for cat, n in (review.get("errors_by_category") or {}).items()
+        if n >= HALLUCINATION_MIN_REPORTS and n * 2 > reviewed
+    ]
+    for cat in sorted(hallucination_blockers):
+        n = review["errors_by_category"][cat]
+        blockers.append(
+            f"systematic severe errors in category '{cat}' "
+            f"({n}/{reviewed} reviews report it, > half)"
+        )
     decision = (
         "ready-for-modeling-dataset" if not blockers else "decompiler-needs-more-work"
     )

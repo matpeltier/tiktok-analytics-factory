@@ -56,6 +56,7 @@ def build_manifest(
     source_hash: str | None,
     video_hash: str | None,
     failure: dict[str, str] | None = None,
+    retry_policy: Any = None,
 ) -> dict[str, Any]:
     dicts = {k: _as_dict(v) for k, v in stage_results.items()}
     total_cost = sum(d.get("usage_cost_usd", 0.0) for d in dicts.values())
@@ -90,6 +91,10 @@ def build_manifest(
     }
     if failure:
         manifest["failure"] = failure
+    if retry_policy is not None:
+        manifest["retry_policy"] = (
+            retry_policy.to_dict() if hasattr(retry_policy, "to_dict") else retry_policy
+        )
     return manifest
 
 

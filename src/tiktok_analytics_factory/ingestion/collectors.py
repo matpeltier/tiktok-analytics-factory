@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import importlib.metadata
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .errors import (
@@ -23,7 +23,7 @@ from .urls import canonical_url
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @dataclass
@@ -101,7 +101,8 @@ class PyktokCollector:
         )
 
         try:
-            import tempfile, os
+            import os
+            import tempfile
 
             with tempfile.TemporaryDirectory() as tmp:
                 target = os.path.join(tmp, "video.mp4")
@@ -176,7 +177,8 @@ class YtDlpCollector:
             creator_handle_hint=str(info.get("uploader") or "").lstrip("@") or None,
         )
         try:
-            import tempfile, os
+            import os
+            import tempfile
 
             with tempfile.TemporaryDirectory() as tmp:
                 opts = {
@@ -244,12 +246,12 @@ def collect_with_fallback(url: str, order: list[Any] | None = None) -> tuple[Col
             last_error = exc
             continue
         if not result.mp4_bytes:
-            exc = DownloadError_(
+            missing = DownloadError_(
                 f"Collector '{collector.name}' returned no media bytes.",
                 detail={"collector": collector.name, "url": url},
             )
-            attempts.append(Attempt(collector.name, False, exc.category, exc.message))
-            last_error = exc
+            attempts.append(Attempt(collector.name, False, missing.category, missing.message))
+            last_error = missing
             continue
         attempts.append(Attempt(collector.name, True))
         return result, attempts

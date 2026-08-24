@@ -75,8 +75,12 @@ def build_index(records_root: Path, index_path: Path) -> list[dict[str, Any]]:
 
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         rows.append(_row_from_manifest(manifest_path.parent, manifest))
-    if rows:
+    if not rows:
+        # Always write an explicit empty-index file so downstream consumers
+        # see an empty dataset rather than a FileNotFoundError.
+        table = pa.Table.from_pylist([], schema=INDEX_SCHEMA)
+    else:
         table = pa.Table.from_pylist(rows, schema=INDEX_SCHEMA)
-        index_path.parent.mkdir(parents=True, exist_ok=True)
-        pq.write_table(table, index_path)
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table, index_path)
     return rows

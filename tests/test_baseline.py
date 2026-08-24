@@ -18,7 +18,11 @@ from tiktok_analytics_factory.baseline.config import (
     BaselineConfigError,
     load_baseline_config,
 )
-from tiktok_analytics_factory.baseline.parsing import ParseError, parse_model_output, validate_against_schema
+from tiktok_analytics_factory.baseline.parsing import (
+    ParseError,
+    parse_model_output,
+    validate_against_schema,
+)
 from tiktok_analytics_factory.baseline.request import (
     RequestBuildError,
     build_generation_settings,

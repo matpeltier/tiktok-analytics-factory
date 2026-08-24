@@ -8,15 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from tests.perception_fixtures import (  # noqa: F401
+from tests.perception_fixtures import (
     make_multicut_video,
     make_solid_video,
 )
 
-
 pytest.importorskip("tiktok_analytics_factory")
 
-from tiktok_analytics_factory.perception import (  # noqa: E402
+from tiktok_analytics_factory.perception import (
     DetectorConfig,
     MediaFileNotFoundError,
     NoVideoStreamError,
@@ -28,7 +27,10 @@ from tiktok_analytics_factory.perception import (  # noqa: E402
     probe_media,
     run_perception,
 )
-from tiktok_analytics_factory.perception.evaluation import CutAnnotation, shot_cut_timestamps
+from tiktok_analytics_factory.perception.evaluation import (
+    CutAnnotation,
+    shot_cut_timestamps,
+)
 
 
 @pytest.fixture(scope="module")

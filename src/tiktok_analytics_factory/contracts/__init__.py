@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,7 @@ class ContractValidationError(ValueError):
     """Raised when an artifact fails its JSON Schema contract."""
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_schema(name: str) -> dict[str, Any]:
     path = SCHEMAS_DIR / f"{name}.json"
     if not path.exists():
@@ -176,7 +176,7 @@ def project_creative_to_canonical(creative_ir: dict[str, Any]) -> dict[str, Any]
 
     product_present: bool | None = None
     first_product_seconds: float | None = None
-    cta_type: str | None | None = None  # str, None, or "not_applicable"
+    cta_type: str | None = None  # str, None, or "not_applicable"
     proof_labels: list[str] = []
     trust_labels: list[str] = []
 

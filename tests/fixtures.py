@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from tiktok_analytics_factory.ingestion.collectors import CollectionResult
-from tiktok_analytics_factory.ingestion.errors import DownloadError_, VideoUnavailableError
 from tiktok_analytics_factory import ingestion as ing
+from tiktok_analytics_factory.ingestion.collectors import CollectionResult
 
 FAKE_MP4_A = b"\x00\x00\x00\x18ftypmp42fake-tiktok-video-payload-A" * 4
 FAKE_MP4_B = b"\x00\x00\x00\x18ftypmp42fake-tiktok-video-payload-B" * 4

@@ -57,10 +57,12 @@ no code edits required.
 ## Gate
 
 `ready-for-modeling-dataset` requires >=20 successes, >=85% success rate among
-eligible attempts, 100% validation/projection on successes, manual review
-average >=4.0/5 over at least max(5, ceil(20% of successes)) records, measured
-costs/latency, and isolated reproducible failures. Otherwise:
-`decompiler-needs-more-work`.
+eligible attempts, 100% validation/projection on successes (derived from each
+record's persisted `validation.json`/IR artifacts), manual review average
+>=4.0/5 over at least max(5, ceil(20% of successes)) records, no reviewed
+category with systematic severe errors (a category is blocked when reported in
+more than half of the reviews, minimum 2 reports), measured costs/latency, and
+isolated reproducible failures. Otherwise: `decompiler-needs-more-work`.
 
-Current decision: **decompiler-needs-more-work** (prerequisites #6/#7 missing;
-smallest blocking issues listed in the completion note).
+Current decision: **decompiler-needs-more-work** (the live 20-50 video pilot
+has not been executed yet; the gate cannot pass without measured records).

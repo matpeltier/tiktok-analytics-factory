@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .models import NormalizedMetadata
@@ -27,7 +27,7 @@ def epoch_to_iso(value: Any) -> str | None:
     if value in (None, "", 0):
         return None
     try:
-        return datetime.fromtimestamp(int(value), tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(int(value), tz=UTC).isoformat()
     except (TypeError, ValueError, OSError):
         return None
 
@@ -48,7 +48,7 @@ def normalize_payload(
         platform="tiktok",
         video_id=video_id,
         source_url=source_url,
-        collected_at=collected_at or datetime.now(timezone.utc).isoformat(),
+        collected_at=collected_at or datetime.now(UTC).isoformat(),
         collector_name=collector_name,
         collector_version=collector_version,
     )

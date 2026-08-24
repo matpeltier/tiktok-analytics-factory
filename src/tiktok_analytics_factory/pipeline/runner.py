@@ -79,6 +79,28 @@ def _status_for_stage(stage: str) -> str:
     }.get(stage, f"{stage}_failed")
 
 
+def _schema_validation_ok(record_dir: Path) -> bool:
+    """Derive schema validity from the persisted validation artifacts.
+
+    True only when the decompiler's validation.json exists and reports
+    ``valid`` and both CreativeIR and CanonicalIR artifacts are present.
+    """
+    d = record_dir / "decompilation"
+    validation_path = d / "validation.json"
+    if not (
+        validation_path.exists()
+        and (d / "creative_ir.json").exists()
+        and (d / "canonical_ir.json").exists()
+    ):
+        return False
+    try:
+        validation = json.loads(validation_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.error("unreadable validation artifact for %s: %s", record_dir, exc)
+        return False
+    return bool(validation.get("valid"))
+
+
 def _process_one(
     entry: Any,
     policy: CohortPolicy,
@@ -97,6 +119,7 @@ def _process_one(
     # transient collection errors only.
     record_dir: Path | None = None
     ingest_payload: dict[str, Any] = {}
+    source_hash: str | None = None
     try:
         outcome = run_with_retry(
             lambda: ingest(entry.url, str(output_root / "raw")),
@@ -125,6 +148,7 @@ def _process_one(
             if src.exists() and not (record_dir / "source" / name).exists():
                 shutil.copy2(src, record_dir / "source" / name)
         write_json(record_dir / "source" / "metadata.normalized.json", metadata.to_json_dict())
+        source_hash = _sha256_file(record_dir / "source" / "metadata.normalized.json")
     except Exception as exc:  # noqa: BLE001 - failure isolation must catch everything per video
         vid = getattr(exc, "payload", {}).get("video_id", None) if hasattr(exc, "payload") else entry.video_id
         logger.error("ingestion failed for %s: %s", entry.url, exc)
@@ -136,9 +160,10 @@ def _process_one(
                 status="ingestion_failed",
                 stage_results={},
                 pipeline_version=PIPELINE_VERSION,
-                source_hash=None,
+                source_hash=source_hash,
                 video_hash=None,
                 failure={"stage": "ingestion", "category": type(exc).__name__, "message": str(exc)},
+                retry_policy=options.retry_policy,
             )
             write_json(record_dir / "record_manifest.json", manifest)
         return {"url": entry.url, "video_id": vid, "status": "ingestion_failed",
@@ -192,9 +217,10 @@ def _process_one(
         status=status,
         stage_results=stage_results,
         pipeline_version=PIPELINE_VERSION,
-        source_hash=None,
+        source_hash=source_hash,
         video_hash=video_hash,
         failure=failure,
+        retry_policy=options.retry_policy,
     )
     manifest["ingestion_status"] = "ok"
     manifest["perception_status"] = (
@@ -211,7 +237,7 @@ def _process_one(
     manifest["canonical_ir_path"] = str(
         (record_dir / "decompilation" / "canonical_ir.json").relative_to(output_root)
     ) if status == "success" else None
-    manifest["schema_valid"] = status == "success"
+    manifest["schema_valid"] = _schema_validation_ok(record_dir) if status == "success" else False
     manifest["source"] = {
         "creator_id": (ingest_payload.get("metadata", {}) or {}).get("creator_id"),
         "creator_handle": (ingest_payload.get("metadata", {}) or {}).get("creator_handle"),

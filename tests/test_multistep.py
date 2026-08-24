@@ -9,7 +9,6 @@ import pytest
 
 from tiktok_analytics_factory.baseline.parsing import ParseError, parse_model_output
 from tiktok_analytics_factory.contracts import project_creative_to_canonical, validate
-from tiktok_analytics_factory.multistep.artifacts import MultiStepArtifacts
 from tiktok_analytics_factory.multistep.config import (
     MultiStepConfig,
     MultiStepConfigError,

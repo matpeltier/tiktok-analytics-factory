@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from tiktok_analytics_factory.ingestion.urls import canonical_url, extract_video_id
 from tiktok_analytics_factory.ingestion.errors import InvalidURLError
+from tiktok_analytics_factory.ingestion.urls import canonical_url, extract_video_id
 
 
 def test_extracts_id_from_canonical_url():
