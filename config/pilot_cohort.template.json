@@ -1,0 +1,13 @@
+{
+  "cohort_id": "pilot-niche-001",
+  "version": "1.0.0",
+  "niche": "PLACEHOLDER: single approved micro-niche from issue #7",
+  "max_videos": 50,
+  "rules": {
+    "required_hashtags": ["exampletag"],
+    "allowed_creator_handles": [],
+    "min_views": 10000,
+    "max_views": 5000000
+  },
+  "note": "Template only. Issue #8 is blocked until issue #7 closes with an explicitly approved pilot_cohort.json."
+}
