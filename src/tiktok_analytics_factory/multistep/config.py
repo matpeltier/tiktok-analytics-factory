@@ -40,6 +40,8 @@ class MultiStepConfig:
     # let the model misalign descriptions across shot ids on the reference
     # video (documented in run 20260823T143743Z_3066e41f).
     pass_a_batch_size: int = 1
+    # Minimum spacing between live model calls to avoid upstream 429s.
+    min_model_call_gap_seconds: float = 30.0
     schema_path: Path = RICH_SCHEMA_PATH
     derived_root: Path = DEFAULT_DERIVED_ROOT
     perception_version: str = DEFAULT_PERCEPTION_VERSION
@@ -148,6 +150,12 @@ def load_multistep_config(
         pass_b_prompt_path=Path(file_cfg.get("pass_b_prompt_path", PASS_B_PROMPT_PATH)),
         pass_a_batch_size=int(
             file_cfg.get("pass_a_batch_size", env.get("MULTISTEP_PASS_A_BATCH_SIZE", 1))
+        ),
+        min_model_call_gap_seconds=float(
+            file_cfg.get(
+                "min_model_call_gap_seconds",
+                env.get("MULTISTEP_MIN_MODEL_CALL_GAP_SECONDS", 30.0),
+            )
         ),
         schema_path=Path(file_cfg.get("schema_path", RICH_SCHEMA_PATH)),
         derived_root=Path(file_cfg.get("derived_root", DEFAULT_DERIVED_ROOT)),
