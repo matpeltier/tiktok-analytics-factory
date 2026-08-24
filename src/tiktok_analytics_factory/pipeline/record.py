@@ -98,6 +98,32 @@ def build_manifest(
     return manifest
 
 
+def persist_ingestion_failure(
+    output_root: Path,
+    entry: Any,
+    video_id: str | None,
+    category: str,
+    message: str,
+) -> None:
+    """Append an auditable failed-attempt entry to failed_sources.jsonl.
+
+    Used when a video fails before a record directory could be created
+    (e.g. collection failed and no video ID was ever resolved).
+    """
+    out = output_root / "failed_sources.jsonl"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "url": entry.url,
+        "video_id": video_id,
+        "status": "ingestion_failed",
+        "failure_category": category,
+        "message": message,
+        "failed_at": utc_now_iso(),
+    }
+    with out.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row, sort_keys=True) + "\n")
+
+
 def persist_rejection(
     output_root: Path,
     entry: Any,

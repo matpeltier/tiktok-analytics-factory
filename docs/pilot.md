@@ -66,3 +66,27 @@ isolated reproducible failures. Otherwise: `decompiler-needs-more-work`.
 
 Current decision: **decompiler-needs-more-work** (the live 20-50 video pilot
 has not been executed yet; the gate cannot pass without measured records).
+
+## Live collection attempt (2026-08-24)
+
+A real-network collection attempt from the CI/datacenter environment was made
+to execute the pilot. TikTok rejects all metadata/media requests from this
+environment's IP (`yt-dlp`: "Your IP address is blocked from accessing this
+post"); third-party mirrors (e.g. tikwm) are gated behind a Cloudflare
+challenge. The batch runner behaved correctly under these conditions:
+failures were isolated per video, `failed_sources.jsonl` captured each failed
+attempt with category/message, and an honest report + gate decision was
+produced with zero fabricated successes.
+
+Consequence: executing the 20-50 video pilot requires a collection
+environment whose IP is not blocked (residential/proxy egress or manual
+browser-assisted collection). This is the single remaining blocker; no
+pipeline changes are required for it.
+
+## Failed-attempt audit log
+
+Ingestion failures that occur before a video ID is resolved (no record
+directory can exist) are appended to `<output-root>/failed_sources.jsonl` with
+url, status, failure category, message, and timestamp, and are counted in the
+report's `collection_failures` metric so every requested source is auditable.
+

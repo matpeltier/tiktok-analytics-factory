@@ -224,6 +224,22 @@ def test_ingestion_failed_status(tmp_path):
     assert summary.rows[0]["status"] == "ingestion_failed"
 
 
+def test_ingestion_failure_persisted_and_counted(tmp_path):
+    _run(
+        tmp_path,
+        [{"url": url_for("302"), "video_id": "302"}],
+        ingest=FakeIngest(fail_urls={url_for("302")}),
+    )
+    failed = tmp_path / "dataset" / "failed_sources.jsonl"
+    assert failed.exists()
+    entry = json.loads(failed.read_text().splitlines()[0])
+    assert entry["url"] == url_for("302")
+    assert entry["status"] == "ingestion_failed"
+    assert entry["failure_category"] == "collection"
+    report = json.loads((tmp_path / "dataset" / "pilot_report.json").read_text())
+    assert report["collection_failures"] == 1
+
+
 def test_cohort_rejection_persisted_with_reason(tmp_path):
     cohort_p = tmp_path / "cohort.json"
     cohort_p.write_text(json.dumps({

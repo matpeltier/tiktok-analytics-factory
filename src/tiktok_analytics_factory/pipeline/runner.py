@@ -21,6 +21,7 @@ from .index import build_index
 from .record import (
     build_manifest,
     build_record_dir,
+    persist_ingestion_failure,
     persist_rejection,
     write_json,
 )
@@ -166,6 +167,12 @@ def _process_one(
                 retry_policy=options.retry_policy,
             )
             write_json(record_dir / "record_manifest.json", manifest)
+        else:
+            # No record directory exists (video ID never resolved): persist an
+            # auditable failed-attempt entry so the failure is not lost.
+            persist_ingestion_failure(
+                output_root, entry, vid, "collection", str(exc)
+            )
         return {"url": entry.url, "video_id": vid, "status": "ingestion_failed",
                 "failure_category": "collection"}
 
@@ -313,7 +320,20 @@ def run_pilot(
 
     records_root = out / "records"
     index_rows = build_index(records_root, out / "index.parquet")
-    metrics = aggregate(index_rows, requested=len(entries))
+    # Ingestion failures without a resolvable video ID never produce a record
+    # directory; include them so the report reflects every attempted source.
+    indexed_urls = {r.get("source_url") for r in index_rows}
+    unrecorded = [
+        {
+            "status": row["status"],
+            "failure_category": row["failure_category"],
+            "total_latency_seconds": 0.0,
+            "total_usage_cost_usd": 0.0,
+        }
+        for row in rows
+        if row["url"] not in indexed_urls and row["status"] not in ("success", "rejected_by_cohort")
+    ]
+    metrics = aggregate(index_rows + unrecorded, requested=len(entries))
     if reviews_path is not None:
         rp = Path(reviews_path)
         if not rp.exists():
