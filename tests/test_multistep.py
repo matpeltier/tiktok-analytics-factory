@@ -425,6 +425,35 @@ class TestMerge:
 
 # --- runner (fakes), persistence, usage aggregation --------------------------
 
+class TestThrottling:
+    def test_wait_for_model_gap_enforces_spacing(self, monkeypatch):
+        from tiktok_analytics_factory.multistep import runner as runner_module
+
+        monkeypatch.setattr(runner_module, "_last_model_call_monotonic", None)
+        sleeps = []
+        fake_clock = {"t": 100.0}
+        monkeypatch.setattr(runner_module.time, "monotonic", lambda: fake_clock["t"])
+
+        def fake_sleep(seconds):
+            sleeps.append(seconds)
+            fake_clock["t"] += seconds
+
+        monkeypatch.setattr(runner_module.time, "sleep", fake_sleep)
+
+        # First call records the timestamp without sleeping.
+        runner_module._wait_for_model_gap(30.0)
+        assert sleeps == []
+
+        # Second call 5s later must sleep the remaining 25s.
+        fake_clock["t"] += 5.0
+        runner_module._wait_for_model_gap(30.0)
+        assert len(sleeps) == 1 and abs(sleeps[0] - 25.0) < 1e-6
+
+        # Non-positive gap disables throttling.
+        runner_module._wait_for_model_gap(0.0)
+        assert len(sleeps) == 1
+        monkeypatch.setattr(runner_module, "_last_model_call_monotonic", None)
+
 
 class TestRunner:
     def fake_callers(self, raw_a=None, raw_b=None, usage=(111, 222)):

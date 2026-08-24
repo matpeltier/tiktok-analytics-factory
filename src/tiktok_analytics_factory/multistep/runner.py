@@ -61,6 +61,32 @@ def _retry_delay_seconds(message: str, attempt: int) -> float:
 
 PassCaller = Callable[[list[dict[str, Any]], dict[str, Any]], tuple[str, dict[str, Any]]]
 
+_last_model_call_monotonic: float | None = None
+
+
+def _wait_for_model_gap(min_gap_seconds: float) -> None:
+    """Enforce the configured minimum spacing between live model calls.
+
+    The pipeline is strictly sequential (no parallelism), so a single
+    module-level timestamp of the last call start is sufficient. A non-positive
+    gap disables throttling.
+    """
+    global _last_model_call_monotonic
+    if min_gap_seconds <= 0:
+        _last_model_call_monotonic = time.monotonic()
+        return
+    now = time.monotonic()
+    if _last_model_call_monotonic is not None:
+        elapsed = now - _last_model_call_monotonic
+        remaining = min_gap_seconds - elapsed
+        if remaining > 0:
+            print(
+                f"[multistep] throttling: waiting {remaining:.1f}s between model calls",
+                file=sys.stderr,
+            )
+            time.sleep(remaining)
+    _last_model_call_monotonic = time.monotonic()
+
 
 def _call_gemini(config: MultiStepConfig, parts: list[dict[str, Any]], settings: dict[str, Any], model_id: str) -> tuple[str, dict[str, Any]]:
     try:
