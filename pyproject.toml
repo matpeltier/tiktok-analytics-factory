@@ -42,6 +42,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 markers = ["integration: optional live-network tests (deselected by default)"]
 addopts = "-m 'not integration'"
 
