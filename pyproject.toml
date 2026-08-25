@@ -20,6 +20,9 @@ ingestion = [
 dev = [
     "pytest>=8",
 ]
+qa = [
+    "streamlit>=1.30",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
