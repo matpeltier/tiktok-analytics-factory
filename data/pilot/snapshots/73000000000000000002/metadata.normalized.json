@@ -1,0 +1,23 @@
+{
+  "platform": "tiktok",
+  "video_id": "73000000000000000002",
+  "source_url": "https://www.tiktok.com/@sourdough.sci/video/73000000000000000002",
+  "creator_handle": "sourdough.sci",
+  "creator_id": "cr_sourdough",
+  "caption": "pilot bread clip 1",
+  "hashtags": [
+    "baking"
+  ],
+  "published_at": "2026-04-22T00:00:00+00:00",
+  "duration_seconds": 23.6,
+  "views": 45000,
+  "likes": 2665,
+  "comments": 356,
+  "shares": 511,
+  "saves": null,
+  "music_title": null,
+  "music_author": null,
+  "collected_at": "2026-08-24T12:00:00+00:00",
+  "collector_name": "synthetic-pilot",
+  "collector_version": "0.1"
+}

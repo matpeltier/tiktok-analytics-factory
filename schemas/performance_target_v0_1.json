@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/performance_target_v0_1.json",
+  "title": "Derived performance target record (performance_target_v0_1)",
+  "description": "Leakage-safe modeling targets derived from immutable Performance snapshots. Raw metrics are copied for convenience but the authoritative raw record remains the source snapshot; unknown values are null and never imputed. A target that cannot be validly computed is marked is_valid=false with explicit invalid_reasons.",
+  "type": "object",
+  "required": [
+    "video_id",
+    "source_snapshot_id",
+    "source_snapshot_version",
+    "cohort_id",
+    "cohort_version",
+    "target_version",
+    "target_schema_version",
+    "age_policy",
+    "is_valid",
+    "invalid_reasons",
+    "constructed_at",
+    "code_revision",
+    "construction_config"
+  ],
+  "properties": {
+    "video_id": {"type": "string"},
+    "source_snapshot_id": {
+      "type": "string",
+      "description": "Path/identifier of the exact source Performance snapshot file."
+    },
+    "source_snapshot_version": {"type": ["string", "null"]},
+    "cohort_id": {"type": "string"},
+    "cohort_version": {"type": "string"},
+    "target_version": {
+      "type": "string",
+      "description": "e.g. performance_target_v0_1+method:<sha256-12 of construction_config>"
+    },
+    "target_schema_version": {"const": "performance_target_v0_1"},
+    "age_policy": {"type": "string"},
+
+    "views": {"type": ["integer", "null"], "minimum": 0},
+    "likes": {"type": ["integer", "null"], "minimum": 0},
+    "comments": {"type": ["integer", "null"], "minimum": 0},
+    "shares": {"type": ["integer", "null"], "minimum": 0},
+    "published_at": {"type": ["string", "null"]},
+    "observed_at": {"type": ["string", "null"]},
+    "post_age_days": {"type": ["number", "null"], "minimum": 0},
+    "log_views": {"type": ["number", "null"]},
+    "likes_per_view": {"type": ["number", "null"], "minimum": 0},
+    "comments_per_view": {"type": ["number", "null"], "minimum": 0},
+    "shares_per_view": {"type": ["number", "null"], "minimum": 0},
+    "creator_key": {"type": ["string", "null"]},
+    "creator_baseline_log_views": {"type": ["number", "null"]},
+    "n_creator_other_videos": {"type": ["integer", "null"], "minimum": 0},
+    "expected_log_views_age_model": {"type": ["number", "null"]},
+
+    "creator_relative_log_views": {"type": ["number", "null"]},
+    "performance_residual": {"type": ["number", "null"]},
+
+    "is_valid": {"type": "boolean"},
+    "invalid_reasons": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "missing_creator_identity",
+          "missing_views",
+          "insufficient_creator_history",
+          "missing_post_age_or_observation_time"
+        ]
+      }
+    },
+
+    "constructed_at": {"type": "string"},
+    "code_revision": {"type": ["string", "null"]},
+    "construction_config": {"type": "object"}
+  },
+  "additionalProperties": false
+}
